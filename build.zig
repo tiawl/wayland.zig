@@ -20,9 +20,9 @@ fn exec (builder: *std.Build, argv: [] const [] const u8) !void
 
   const term = try child.wait ();
 
-  if (stdout.items.len > 0) std.debug.print ("{s}", .{ stdout.items });
-  if (stderr.items.len > 0 and !std.meta.eql (term, std.ChildProcess.Term { .Exited = 0 })) std.debug.print ("\x1b[31m{s}\x1b[0m", .{ stderr.items });
-  try std.testing.expectEqual (term, std.ChildProcess.Term { .Exited = 0 });
+  if (stdout.items.len > 0) std.debug.print ("{s}", .{ stdout.items, });
+  if (stderr.items.len > 0 and !std.meta.eql (term, std.ChildProcess.Term { .Exited = 0, })) std.debug.print ("\x1b[31m{s}\x1b[0m", .{ stderr.items, });
+  try std.testing.expectEqual (term, std.ChildProcess.Term { .Exited = 0, });
 }
 
 fn update (builder: *std.Build) !void
@@ -90,15 +90,17 @@ fn update (builder: *std.Build) !void
   for ([_] struct { name: [] const u8, xml: [] const u8, }
     {
       .{ .name = "xdg-shell", .xml = try std.fs.path.join (builder.allocator, &.{ tmp_path, "stable", "xdg-shell", "xdg-shell.xml", }), },
+      .{ .name = "xdg-decoration-unstable-v1", .xml = try std.fs.path.join (builder.allocator, &.{ tmp_path, "unstable", "xdg-decoration", "xdg-decoration-unstable-v1.xml", }), },
       .{ .name = "viewporter", .xml = try std.fs.path.join (builder.allocator, &.{ tmp_path, "stable", "viewporter", "viewporter.xml", }), },
-      .{ .name = "xdg-decoration", .xml = try std.fs.path.join (builder.allocator, &.{ tmp_path, "unstable", "xdg-decoration", "xdg-decoration-unstable-v1.xml", }), },
       .{ .name = "relative-pointer-unstable-v1", .xml = try std.fs.path.join (builder.allocator, &.{ tmp_path, "unstable", "relative-pointer", "relative-pointer-unstable-v1.xml", }), },
       .{ .name = "pointer-constraints-unstable-v1", .xml = try std.fs.path.join (builder.allocator, &.{ tmp_path, "unstable", "pointer-constraints", "pointer-constraints-unstable-v1.xml", }), },
+      .{ .name = "fractional-scale-v1", .xml = try std.fs.path.join (builder.allocator, &.{ tmp_path, "staging", "fractional-scale", "fractional-scale-v1.xml", }), },
+      .{ .name = "xdg-activation-v1", .xml = try std.fs.path.join (builder.allocator, &.{ tmp_path, "staging", "xdg-activation", "xdg-activation-v1.xml", }), },
       .{ .name = "idle-inhibit-unstable-v1", .xml = try std.fs.path.join (builder.allocator, &.{ tmp_path, "unstable", "idle-inhibit", "idle-inhibit-unstable-v1.xml", }), },
     }) |gen|
   {
-    const protocol_h = try std.fmt.allocPrint (builder.allocator, "wayland-{s}-client-protocol.h", .{ gen.name, });
-    const protocol_code_h = try std.fmt.allocPrint (builder.allocator, "wayland-{s}-client-protocol-code.h", .{ gen.name, });
+    const protocol_h = try std.fmt.allocPrint (builder.allocator, "{s}-client-protocol.h", .{ gen.name, });
+    const protocol_code_h = try std.fmt.allocPrint (builder.allocator, "{s}-client-protocol-code.h", .{ gen.name, });
     try exec (builder, &[_][] const u8 { "wayland-scanner", "client-header", gen.xml, try std.fs.path.join (builder.allocator, &.{ include_path, protocol_h, }), });
     try exec (builder, &[_][] const u8 { "wayland-scanner", "private-code", gen.xml, try std.fs.path.join (builder.allocator, &.{ include_path, protocol_code_h, }), });
   }
@@ -120,7 +122,7 @@ pub fn build (builder: *std.Build) !void
     .optimize = optimize,
   });
 
-  std.debug.print ("[wayland headers dir] {s}\n", .{ try builder.build_root.join (builder.allocator, &.{ "wayland", "include" }), });
+  std.debug.print ("[wayland headers dir] {s}\n", .{ try builder.build_root.join (builder.allocator, &.{ "wayland", "include", }), });
   lib.installHeadersDirectory (try std.fs.path.join (builder.allocator, &.{ "wayland", "include", }), ".");
 
   builder.installArtifact (lib);
