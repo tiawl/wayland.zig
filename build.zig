@@ -1,5 +1,12 @@
 const std = @import ("std");
-const pkg = .{ .name = "wayland.zig", .version = "1.22.0", .protocols_version = "1.33", };
+const pkg = .{ .name = "wayland.zig", .version = .{ .wayland = "1.22.0", .protocols = "1.33", }, };
+
+const Paths = struct
+{
+  wayland: [] const u8 = undefined,
+  tmp: [] const u8 = undefined,
+  include: [] const u8 = undefined,
+};
 
 fn exec (builder: *std.Build, argv: [] const [] const u8) !void
 {
@@ -25,28 +32,16 @@ fn exec (builder: *std.Build, argv: [] const [] const u8) !void
   try std.testing.expectEqual (term, std.ChildProcess.Term { .Exited = 0, });
 }
 
-fn update (builder: *std.Build) !void
+fn update_wayland (builder: *std.Build, path: *const Paths) !void
 {
-  const wayland_path = try builder.build_root.join (builder.allocator, &.{ "wayland", });
-  const tmp_path = try std.fs.path.join (builder.allocator, &.{ wayland_path, "tmp", });
-  const include_path = try std.fs.path.join (builder.allocator, &.{ wayland_path, "include", });
-  const tmp_src_path = try std.fs.path.join (builder.allocator, &.{ tmp_path, "src", });
-  const xml_path = try std.fs.path.join (builder.allocator, &.{ tmp_path, "protocol", "wayland.xml", });
+  const tmp_src_path = try std.fs.path.join (builder.allocator, &.{ path.tmp, "src", });
+  const xml_path = try std.fs.path.join (builder.allocator, &.{ path.tmp, "protocol", "wayland.xml", });
 
-  std.fs.deleteTreeAbsolute (wayland_path) catch |err|
-  {
-    switch (err)
-    {
-      error.FileNotFound => {},
-      else => return err,
-    }
-  };
+  try std.fs.makeDirAbsolute (path.wayland);
+  try std.fs.makeDirAbsolute (path.include);
 
-  try std.fs.makeDirAbsolute (wayland_path);
-  try std.fs.makeDirAbsolute (include_path);
-
-  try exec (builder, &[_][] const u8 { "git", "clone", "https://gitlab.freedesktop.org/wayland/wayland.git", tmp_path, });
-  try exec (builder, &[_][] const u8 { "git", "-C", tmp_path, "checkout", pkg.version, });
+  try exec (builder, &[_][] const u8 { "git", "clone", "https://gitlab.freedesktop.org/wayland/wayland.git", path.tmp, });
+  try exec (builder, &[_][] const u8 { "git", "-C", path.tmp, "checkout", pkg.version.wayland, });
 
   var tmp = try std.fs.openDirAbsolute (tmp_src_path, .{ .iterate = true, });
   defer tmp.close ();
@@ -59,13 +54,13 @@ fn update (builder: *std.Build) !void
       std.mem.startsWith (u8, entry.name, "wayland-util")) and
       !std.mem.endsWith (u8, entry.name, "private.h") and std.mem.endsWith (u8, entry.name, ".h") and entry.kind == .file)
         try std.fs.copyFileAbsolute (try std.fs.path.join (builder.allocator, &.{ tmp_src_path, entry.name, }),
-          try std.fs.path.join (builder.allocator, &.{ include_path, entry.name, }), .{});
+          try std.fs.path.join (builder.allocator, &.{ path.include, entry.name, }), .{});
   }
 
   var wayland_version_h = try tmp.readFileAlloc (builder.allocator, "wayland-version.h.in", std.math.maxInt (usize));
-  wayland_version_h = try std.mem.replaceOwned (u8, builder.allocator, wayland_version_h, "@WAYLAND_VERSION@", pkg.version);
+  wayland_version_h = try std.mem.replaceOwned (u8, builder.allocator, wayland_version_h, "@WAYLAND_VERSION@", pkg.version.wayland);
 
-  var tokit = std.mem.tokenizeScalar (u8, pkg.version, '.');
+  var tokit = std.mem.tokenizeScalar (u8, pkg.version.wayland, '.');
   const match = [_][] const u8 { "@WAYLAND_VERSION_MAJOR@", "@WAYLAND_VERSION_MINOR@", "@WAYLAND_VERSION_MICRO@", };
   var index: usize = 0;
   while (tokit.next ()) |*token|
@@ -74,38 +69,61 @@ fn update (builder: *std.Build) !void
     index += 1;
   }
 
-  var include = try std.fs.openDirAbsolute (include_path, .{});
+  var include = try std.fs.openDirAbsolute (path.include, .{});
   defer include.close ();
   try include.writeFile ("wayland-version.h", wayland_version_h);
 
-  try exec (builder, &[_][] const u8 { "wayland-scanner", "server-header", xml_path, try std.fs.path.join (builder.allocator, &.{ include_path, "wayland-server-protocol.h", }), });
-  try exec (builder, &[_][] const u8 { "wayland-scanner", "client-header", xml_path, try std.fs.path.join (builder.allocator, &.{ include_path, "wayland-client-protocol.h", }), });
-  try exec (builder, &[_][] const u8 { "wayland-scanner", "private-code", xml_path, try std.fs.path.join (builder.allocator, &.{ include_path, "wayland-client-protocol-code.h", }), });
+  try exec (builder, &[_][] const u8 { "wayland-scanner", "server-header", xml_path, try std.fs.path.join (builder.allocator, &.{ path.include, "wayland-server-protocol.h", }), });
+  try exec (builder, &[_][] const u8 { "wayland-scanner", "client-header", xml_path, try std.fs.path.join (builder.allocator, &.{ path.include, "wayland-client-protocol.h", }), });
+  try exec (builder, &[_][] const u8 { "wayland-scanner", "private-code", xml_path, try std.fs.path.join (builder.allocator, &.{ path.include, "wayland-client-protocol-code.h", }), });
 
-  try std.fs.deleteTreeAbsolute (tmp_path);
+  try std.fs.deleteTreeAbsolute (path.tmp);
+}
 
-  try exec (builder, &[_][] const u8 { "git", "clone", "https://gitlab.freedesktop.org/wayland/wayland-protocols.git", tmp_path, });
-  try exec (builder, &[_][] const u8 { "git", "-C", tmp_path, "checkout", pkg.protocols_version, });
+fn update_protocols (builder: *std.Build, path: *const Paths) !void
+{
+  try exec (builder, &[_][] const u8 { "git", "clone", "https://gitlab.freedesktop.org/wayland/wayland-protocols.git", path.tmp, });
+  try exec (builder, &[_][] const u8 { "git", "-C", path.tmp, "checkout", pkg.version.protocols, });
 
   for ([_] struct { name: [] const u8, xml: [] const u8, }
     {
-      .{ .name = "xdg-shell", .xml = try std.fs.path.join (builder.allocator, &.{ tmp_path, "stable", "xdg-shell", "xdg-shell.xml", }), },
-      .{ .name = "xdg-decoration-unstable-v1", .xml = try std.fs.path.join (builder.allocator, &.{ tmp_path, "unstable", "xdg-decoration", "xdg-decoration-unstable-v1.xml", }), },
-      .{ .name = "viewporter", .xml = try std.fs.path.join (builder.allocator, &.{ tmp_path, "stable", "viewporter", "viewporter.xml", }), },
-      .{ .name = "relative-pointer-unstable-v1", .xml = try std.fs.path.join (builder.allocator, &.{ tmp_path, "unstable", "relative-pointer", "relative-pointer-unstable-v1.xml", }), },
-      .{ .name = "pointer-constraints-unstable-v1", .xml = try std.fs.path.join (builder.allocator, &.{ tmp_path, "unstable", "pointer-constraints", "pointer-constraints-unstable-v1.xml", }), },
-      .{ .name = "fractional-scale-v1", .xml = try std.fs.path.join (builder.allocator, &.{ tmp_path, "staging", "fractional-scale", "fractional-scale-v1.xml", }), },
-      .{ .name = "xdg-activation-v1", .xml = try std.fs.path.join (builder.allocator, &.{ tmp_path, "staging", "xdg-activation", "xdg-activation-v1.xml", }), },
-      .{ .name = "idle-inhibit-unstable-v1", .xml = try std.fs.path.join (builder.allocator, &.{ tmp_path, "unstable", "idle-inhibit", "idle-inhibit-unstable-v1.xml", }), },
+      .{ .name = "xdg-shell", .xml = try std.fs.path.join (builder.allocator, &.{ path.tmp, "stable", "xdg-shell", "xdg-shell.xml", }), },
+      .{ .name = "xdg-decoration-unstable-v1", .xml = try std.fs.path.join (builder.allocator, &.{ path.tmp, "unstable", "xdg-decoration", "xdg-decoration-unstable-v1.xml", }), },
+      .{ .name = "viewporter", .xml = try std.fs.path.join (builder.allocator, &.{ path.tmp, "stable", "viewporter", "viewporter.xml", }), },
+      .{ .name = "relative-pointer-unstable-v1", .xml = try std.fs.path.join (builder.allocator, &.{ path.tmp, "unstable", "relative-pointer", "relative-pointer-unstable-v1.xml", }), },
+      .{ .name = "pointer-constraints-unstable-v1", .xml = try std.fs.path.join (builder.allocator, &.{ path.tmp, "unstable", "pointer-constraints", "pointer-constraints-unstable-v1.xml", }), },
+      .{ .name = "fractional-scale-v1", .xml = try std.fs.path.join (builder.allocator, &.{ path.tmp, "staging", "fractional-scale", "fractional-scale-v1.xml", }), },
+      .{ .name = "xdg-activation-v1", .xml = try std.fs.path.join (builder.allocator, &.{ path.tmp, "staging", "xdg-activation", "xdg-activation-v1.xml", }), },
+      .{ .name = "idle-inhibit-unstable-v1", .xml = try std.fs.path.join (builder.allocator, &.{ path.tmp, "unstable", "idle-inhibit", "idle-inhibit-unstable-v1.xml", }), },
     }) |gen|
   {
     const protocol_h = try std.fmt.allocPrint (builder.allocator, "{s}-client-protocol.h", .{ gen.name, });
     const protocol_code_h = try std.fmt.allocPrint (builder.allocator, "{s}-client-protocol-code.h", .{ gen.name, });
-    try exec (builder, &[_][] const u8 { "wayland-scanner", "client-header", gen.xml, try std.fs.path.join (builder.allocator, &.{ include_path, protocol_h, }), });
-    try exec (builder, &[_][] const u8 { "wayland-scanner", "private-code", gen.xml, try std.fs.path.join (builder.allocator, &.{ include_path, protocol_code_h, }), });
+    try exec (builder, &[_][] const u8 { "wayland-scanner", "client-header", gen.xml, try std.fs.path.join (builder.allocator, &.{ path.include, protocol_h, }), });
+    try exec (builder, &[_][] const u8 { "wayland-scanner", "private-code", gen.xml, try std.fs.path.join (builder.allocator, &.{ path.include, protocol_code_h, }), });
   }
 
-  try std.fs.deleteTreeAbsolute (tmp_path);
+  try std.fs.deleteTreeAbsolute (path.tmp);
+}
+
+fn update (builder: *std.Build) !void
+{
+  var path: Paths = .{};
+  path.wayland = try builder.build_root.join (builder.allocator, &.{ "wayland", });
+  path.tmp = try std.fs.path.join (builder.allocator, &.{ path.wayland, "tmp", });
+  path.include = try std.fs.path.join (builder.allocator, &.{ path.wayland, "include", });
+
+  std.fs.deleteTreeAbsolute (path.wayland) catch |err|
+  {
+    switch (err)
+    {
+      error.FileNotFound => {},
+      else => return err,
+    }
+  };
+
+  try update_wayland (builder, &path);
+  try update_protocols (builder, &path);
 }
 
 pub fn build (builder: *std.Build) !void
