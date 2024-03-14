@@ -8,6 +8,26 @@ const Paths = struct
   include: [] const u8 = undefined,
 };
 
+fn write (path: [] const u8, name: [] const u8, content: [] const u8) !void
+{
+  std.debug.print ("[write {s}/{s}]\n", .{ path, name, });
+  var dir = try std.fs.openDirAbsolute (path, .{});
+  defer dir.close ();
+  try dir.writeFile (name, content);
+}
+
+fn make (path: [] const u8) !void
+{
+  std.debug.print ("[make {s}]\n", .{ path, });
+  std.fs.makeDirAbsolute (path) catch |err| if (err != error.PathAlreadyExists) return err;
+}
+
+fn copy (src: [] const u8, dest: [] const u8) !void
+{
+  std.debug.print ("[copy {s} {s}]\n", .{ src, dest });
+  try std.fs.copyFileAbsolute (src, dest, .{});
+}
+
 fn exec (builder: *std.Build, argv: [] const [] const u8) !void
 {
   var stdout = std.ArrayList (u8).init (builder.allocator);
@@ -37,8 +57,8 @@ fn update_wayland (builder: *std.Build, path: *const Paths) !void
   const tmp_src_path = try std.fs.path.join (builder.allocator, &.{ path.tmp, "src", });
   const xml_path = try std.fs.path.join (builder.allocator, &.{ path.tmp, "protocol", "wayland.xml", });
 
-  try std.fs.makeDirAbsolute (path.wayland);
-  try std.fs.makeDirAbsolute (path.include);
+  try make (path.wayland);
+  try make (path.include);
 
   try exec (builder, &[_][] const u8 { "git", "clone", "https://gitlab.freedesktop.org/wayland/wayland.git", path.tmp, });
   try exec (builder, &[_][] const u8 { "git", "-C", path.tmp, "checkout", pkg.version.wayland, });
@@ -53,8 +73,8 @@ fn update_wayland (builder: *std.Build, path: *const Paths) !void
       std.mem.startsWith (u8, entry.name, "wayland-server") or
       std.mem.startsWith (u8, entry.name, "wayland-util")) and
       !std.mem.endsWith (u8, entry.name, "private.h") and std.mem.endsWith (u8, entry.name, ".h") and entry.kind == .file)
-        try std.fs.copyFileAbsolute (try std.fs.path.join (builder.allocator, &.{ tmp_src_path, entry.name, }),
-          try std.fs.path.join (builder.allocator, &.{ path.include, entry.name, }), .{});
+        try copy (try std.fs.path.join (builder.allocator, &.{ tmp_src_path, entry.name, }),
+          try std.fs.path.join (builder.allocator, &.{ path.include, entry.name, }));
   }
 
   var wayland_version_h = try tmp.readFileAlloc (builder.allocator, "wayland-version.h.in", std.math.maxInt (usize));
@@ -69,9 +89,7 @@ fn update_wayland (builder: *std.Build, path: *const Paths) !void
     index += 1;
   }
 
-  var include = try std.fs.openDirAbsolute (path.include, .{});
-  defer include.close ();
-  try include.writeFile ("wayland-version.h", wayland_version_h);
+  try write (path.include, "wayland-version.h", wayland_version_h);
 
   try exec (builder, &[_][] const u8 { "wayland-scanner", "server-header", xml_path, try std.fs.path.join (builder.allocator, &.{ path.include, "wayland-server-protocol.h", }), });
   try exec (builder, &[_][] const u8 { "wayland-scanner", "client-header", xml_path, try std.fs.path.join (builder.allocator, &.{ path.include, "wayland-client-protocol.h", }), });
