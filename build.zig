@@ -1,4 +1,5 @@
 const std = @import ("std");
+const toolbox = @import ("toolbox/toolbox.zig");
 const pkg = .{ .name = "wayland.zig", .version = .{ .wayland = "1.22.0", .protocols = "1.33", }, };
 
 const Paths = struct
@@ -8,60 +9,16 @@ const Paths = struct
   include: [] const u8 = undefined,
 };
 
-fn write (path: [] const u8, name: [] const u8, content: [] const u8) !void
-{
-  std.debug.print ("[write {s}/{s}]\n", .{ path, name, });
-  var dir = try std.fs.openDirAbsolute (path, .{});
-  defer dir.close ();
-  try dir.writeFile (name, content);
-}
-
-fn make (path: [] const u8) !void
-{
-  std.debug.print ("[make {s}]\n", .{ path, });
-  std.fs.makeDirAbsolute (path) catch |err| if (err != error.PathAlreadyExists) return err;
-}
-
-fn copy (src: [] const u8, dest: [] const u8) !void
-{
-  std.debug.print ("[copy {s} {s}]\n", .{ src, dest });
-  try std.fs.copyFileAbsolute (src, dest, .{});
-}
-
-fn exec (builder: *std.Build, argv: [] const [] const u8) !void
-{
-  var stdout = std.ArrayList (u8).init (builder.allocator);
-  var stderr = std.ArrayList (u8).init (builder.allocator);
-  errdefer { stdout.deinit (); stderr.deinit (); }
-
-  std.debug.print ("\x1b[35m[{s}]\x1b[0m\n", .{ try std.mem.join (builder.allocator, " ", argv), });
-
-  var child = std.ChildProcess.init (argv, builder.allocator);
-
-  child.stdin_behavior = .Ignore;
-  child.stdout_behavior = .Pipe;
-  child.stderr_behavior = .Pipe;
-
-  try child.spawn ();
-  try child.collectOutput (&stdout, &stderr, 1000);
-
-  const term = try child.wait ();
-
-  if (stdout.items.len > 0) std.debug.print ("{s}", .{ stdout.items, });
-  if (stderr.items.len > 0 and !std.meta.eql (term, std.ChildProcess.Term { .Exited = 0, })) std.debug.print ("\x1b[31m{s}\x1b[0m", .{ stderr.items, });
-  try std.testing.expectEqual (term, std.ChildProcess.Term { .Exited = 0, });
-}
-
 fn update_wayland (builder: *std.Build, path: *const Paths) !void
 {
   const tmp_src_path = try std.fs.path.join (builder.allocator, &.{ path.tmp, "src", });
   const xml_path = try std.fs.path.join (builder.allocator, &.{ path.tmp, "protocol", "wayland.xml", });
 
-  try make (path.wayland);
-  try make (path.include);
+  try toolbox.make (path.wayland);
+  try toolbox.make (path.include);
 
-  try exec (builder, &[_][] const u8 { "git", "clone", "https://gitlab.freedesktop.org/wayland/wayland.git", path.tmp, });
-  try exec (builder, &[_][] const u8 { "git", "-C", path.tmp, "checkout", pkg.version.wayland, });
+  try toolbox.exec (builder, .{ .argv = &[_][] const u8 { "git", "clone", "https://gitlab.freedesktop.org/wayland/wayland.git", path.tmp, }, });
+  try toolbox.exec (builder, .{ .argv = &[_][] const u8 { "git", "-C", path.tmp, "checkout", pkg.version.wayland, }, });
 
   var tmp = try std.fs.openDirAbsolute (tmp_src_path, .{ .iterate = true, });
   defer tmp.close ();
@@ -73,7 +30,7 @@ fn update_wayland (builder: *std.Build, path: *const Paths) !void
       std.mem.startsWith (u8, entry.name, "wayland-server") or
       std.mem.startsWith (u8, entry.name, "wayland-util")) and
       !std.mem.endsWith (u8, entry.name, "private.h") and std.mem.endsWith (u8, entry.name, ".h") and entry.kind == .file)
-        try copy (try std.fs.path.join (builder.allocator, &.{ tmp_src_path, entry.name, }),
+        try toolbox.copy (try std.fs.path.join (builder.allocator, &.{ tmp_src_path, entry.name, }),
           try std.fs.path.join (builder.allocator, &.{ path.include, entry.name, }));
   }
 
@@ -89,19 +46,19 @@ fn update_wayland (builder: *std.Build, path: *const Paths) !void
     index += 1;
   }
 
-  try write (path.include, "wayland-version.h", wayland_version_h);
+  try toolbox.write (path.include, "wayland-version.h", wayland_version_h);
 
-  try exec (builder, &[_][] const u8 { "wayland-scanner", "server-header", xml_path, try std.fs.path.join (builder.allocator, &.{ path.include, "wayland-server-protocol.h", }), });
-  try exec (builder, &[_][] const u8 { "wayland-scanner", "client-header", xml_path, try std.fs.path.join (builder.allocator, &.{ path.include, "wayland-client-protocol.h", }), });
-  try exec (builder, &[_][] const u8 { "wayland-scanner", "private-code", xml_path, try std.fs.path.join (builder.allocator, &.{ path.include, "wayland-client-protocol-code.h", }), });
+  try toolbox.exec (builder, .{ .argv = &[_][] const u8 { "wayland-scanner", "server-header", xml_path, try std.fs.path.join (builder.allocator, &.{ path.include, "wayland-server-protocol.h", }), }, });
+  try toolbox.exec (builder, .{ .argv = &[_][] const u8 { "wayland-scanner", "client-header", xml_path, try std.fs.path.join (builder.allocator, &.{ path.include, "wayland-client-protocol.h", }), }, });
+  try toolbox.exec (builder, .{ .argv = &[_][] const u8 { "wayland-scanner", "private-code", xml_path, try std.fs.path.join (builder.allocator, &.{ path.include, "wayland-client-protocol-code.h", }), }, });
 
   try std.fs.deleteTreeAbsolute (path.tmp);
 }
 
 fn update_protocols (builder: *std.Build, path: *const Paths) !void
 {
-  try exec (builder, &[_][] const u8 { "git", "clone", "https://gitlab.freedesktop.org/wayland/wayland-protocols.git", path.tmp, });
-  try exec (builder, &[_][] const u8 { "git", "-C", path.tmp, "checkout", pkg.version.protocols, });
+  try toolbox.exec (builder, .{ .argv = &[_][] const u8 { "git", "clone", "https://gitlab.freedesktop.org/wayland/wayland-protocols.git", path.tmp, }, });
+  try toolbox.exec (builder, .{ .argv = &[_][] const u8 { "git", "-C", path.tmp, "checkout", pkg.version.protocols, }, });
 
   for ([_] struct { name: [] const u8, xml: [] const u8, }
     {
@@ -117,8 +74,8 @@ fn update_protocols (builder: *std.Build, path: *const Paths) !void
   {
     const protocol_h = try std.fmt.allocPrint (builder.allocator, "{s}-client-protocol.h", .{ gen.name, });
     const protocol_code_h = try std.fmt.allocPrint (builder.allocator, "{s}-client-protocol-code.h", .{ gen.name, });
-    try exec (builder, &[_][] const u8 { "wayland-scanner", "client-header", gen.xml, try std.fs.path.join (builder.allocator, &.{ path.include, protocol_h, }), });
-    try exec (builder, &[_][] const u8 { "wayland-scanner", "private-code", gen.xml, try std.fs.path.join (builder.allocator, &.{ path.include, protocol_code_h, }), });
+    try toolbox.exec (builder, .{ .argv = &[_][] const u8 { "wayland-scanner", "client-header", gen.xml, try std.fs.path.join (builder.allocator, &.{ path.include, protocol_h, }), }, });
+    try toolbox.exec (builder, .{ .argv = &[_][] const u8 { "wayland-scanner", "private-code", gen.xml, try std.fs.path.join (builder.allocator, &.{ path.include, protocol_code_h, }), }, });
   }
 
   try std.fs.deleteTreeAbsolute (path.tmp);
