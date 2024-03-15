@@ -1,5 +1,5 @@
 const std = @import ("std");
-const toolbox = @import ("toolbox").toolbox;
+const toolbox = @import ("toolbox");
 const pkg = .{ .name = "wayland.zig", .version = .{ .wayland = "1.22.0", .protocols = "1.33", }, };
 
 const Paths = struct
@@ -17,8 +17,8 @@ fn update_wayland (builder: *std.Build, path: *const Paths) !void
   try toolbox.make (path.wayland);
   try toolbox.make (path.include);
 
-  try toolbox.exec (builder, .{ .argv = &[_][] const u8 { "git", "clone", "https://gitlab.freedesktop.org/wayland/wayland.git", path.tmp, }, });
-  try toolbox.exec (builder, .{ .argv = &[_][] const u8 { "git", "-C", path.tmp, "checkout", pkg.version.wayland, }, });
+  try toolbox.run (builder, .{ .argv = &[_][] const u8 { "git", "clone", "https://gitlab.freedesktop.org/wayland/wayland.git", path.tmp, }, });
+  try toolbox.run (builder, .{ .argv = &[_][] const u8 { "git", "-C", path.tmp, "checkout", pkg.version.wayland, }, });
 
   var tmp = try std.fs.openDirAbsolute (tmp_src_path, .{ .iterate = true, });
   defer tmp.close ();
@@ -48,17 +48,17 @@ fn update_wayland (builder: *std.Build, path: *const Paths) !void
 
   try toolbox.write (path.include, "wayland-version.h", wayland_version_h);
 
-  try toolbox.exec (builder, .{ .argv = &[_][] const u8 { "wayland-scanner", "server-header", xml_path, try std.fs.path.join (builder.allocator, &.{ path.include, "wayland-server-protocol.h", }), }, });
-  try toolbox.exec (builder, .{ .argv = &[_][] const u8 { "wayland-scanner", "client-header", xml_path, try std.fs.path.join (builder.allocator, &.{ path.include, "wayland-client-protocol.h", }), }, });
-  try toolbox.exec (builder, .{ .argv = &[_][] const u8 { "wayland-scanner", "private-code", xml_path, try std.fs.path.join (builder.allocator, &.{ path.include, "wayland-client-protocol-code.h", }), }, });
+  try toolbox.run (builder, .{ .argv = &[_][] const u8 { "wayland-scanner", "server-header", xml_path, try std.fs.path.join (builder.allocator, &.{ path.include, "wayland-server-protocol.h", }), }, });
+  try toolbox.run (builder, .{ .argv = &[_][] const u8 { "wayland-scanner", "client-header", xml_path, try std.fs.path.join (builder.allocator, &.{ path.include, "wayland-client-protocol.h", }), }, });
+  try toolbox.run (builder, .{ .argv = &[_][] const u8 { "wayland-scanner", "private-code", xml_path, try std.fs.path.join (builder.allocator, &.{ path.include, "wayland-client-protocol-code.h", }), }, });
 
   try std.fs.deleteTreeAbsolute (path.tmp);
 }
 
 fn update_protocols (builder: *std.Build, path: *const Paths) !void
 {
-  try toolbox.exec (builder, .{ .argv = &[_][] const u8 { "git", "clone", "https://gitlab.freedesktop.org/wayland/wayland-protocols.git", path.tmp, }, });
-  try toolbox.exec (builder, .{ .argv = &[_][] const u8 { "git", "-C", path.tmp, "checkout", pkg.version.protocols, }, });
+  try toolbox.run (builder, .{ .argv = &[_][] const u8 { "git", "clone", "https://gitlab.freedesktop.org/wayland/wayland-protocols.git", path.tmp, }, });
+  try toolbox.run (builder, .{ .argv = &[_][] const u8 { "git", "-C", path.tmp, "checkout", pkg.version.protocols, }, });
 
   for ([_] struct { name: [] const u8, xml: [] const u8, }
     {
@@ -74,8 +74,8 @@ fn update_protocols (builder: *std.Build, path: *const Paths) !void
   {
     const protocol_h = try std.fmt.allocPrint (builder.allocator, "{s}-client-protocol.h", .{ gen.name, });
     const protocol_code_h = try std.fmt.allocPrint (builder.allocator, "{s}-client-protocol-code.h", .{ gen.name, });
-    try toolbox.exec (builder, .{ .argv = &[_][] const u8 { "wayland-scanner", "client-header", gen.xml, try std.fs.path.join (builder.allocator, &.{ path.include, protocol_h, }), }, });
-    try toolbox.exec (builder, .{ .argv = &[_][] const u8 { "wayland-scanner", "private-code", gen.xml, try std.fs.path.join (builder.allocator, &.{ path.include, protocol_code_h, }), }, });
+    try toolbox.run (builder, .{ .argv = &[_][] const u8 { "wayland-scanner", "client-header", gen.xml, try std.fs.path.join (builder.allocator, &.{ path.include, protocol_h, }), }, });
+    try toolbox.run (builder, .{ .argv = &[_][] const u8 { "wayland-scanner", "private-code", gen.xml, try std.fs.path.join (builder.allocator, &.{ path.include, protocol_code_h, }), }, });
   }
 
   try std.fs.deleteTreeAbsolute (path.tmp);
