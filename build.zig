@@ -1,5 +1,5 @@
 const std = @import ("std");
-const toolbox = @import ("toolbox/toolbox.zig");
+const toolbox = @import ("toolbox").toolbox;
 const pkg = .{ .name = "wayland.zig", .version = .{ .wayland = "1.22.0", .protocols = "1.33", }, };
 
 const Paths = struct
