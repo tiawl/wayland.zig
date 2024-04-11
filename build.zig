@@ -29,7 +29,7 @@ fn update_wayland (builder: *std.Build, path: *const Paths) !void
     if ((std.mem.startsWith (u8, entry.name, "wayland-client") or
       std.mem.startsWith (u8, entry.name, "wayland-server") or
       std.mem.startsWith (u8, entry.name, "wayland-util")) and
-      !std.mem.endsWith (u8, entry.name, "private.h") and toolbox.is_header_file (entry.name) and entry.kind == .file)
+      !std.mem.endsWith (u8, entry.name, "private.h") and toolbox.is_c_header_file (entry.name) and entry.kind == .file)
         try toolbox.copy (try std.fs.path.join (builder.allocator, &.{ tmp_src_path, entry.name, }),
           try std.fs.path.join (builder.allocator, &.{ path.include, entry.name, }));
   }
@@ -116,7 +116,7 @@ pub fn build (builder: *std.Build) !void
   });
 
   std.debug.print ("[wayland headers dir] {s}\n", .{ try builder.build_root.join (builder.allocator, &.{ "wayland", "include", }), });
-  lib.installHeadersDirectory (try std.fs.path.join (builder.allocator, &.{ "wayland", "include", }), ".");
+  lib.installHeadersDirectory (.{ .path = try std.fs.path.join (builder.allocator, &.{ "wayland", "include", }), }, ".", .{ .include_extensions = &.{ ".h", }, });
 
   builder.installArtifact (lib);
 }
