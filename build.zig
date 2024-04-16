@@ -18,9 +18,9 @@ fn update_wayland (builder: *std.Build, path: *const Paths) !void
 
   try toolbox.make (path.wayland);
 
-  try toolbox.run (builder, .{ .argv = &[_][] const u8 { "git", "clone",
-    "--branch", pkg.version.wayland, "--depth", "1",
-    "https://gitlab.freedesktop.org/wayland/wayland.git", path.tmp, }, });
+  try toolbox.clone (builder,
+    "https://gitlab.freedesktop.org/wayland/wayland.git", pkg.version.wayland,
+    path.tmp);
 
   var tmp_dir =
     try std.fs.openDirAbsolute (tmp_src_path, .{ .iterate = true, });
@@ -33,7 +33,7 @@ fn update_wayland (builder: *std.Build, path: *const Paths) !void
       std.mem.startsWith (u8, entry.name, "wayland-server") or
       std.mem.startsWith (u8, entry.name, "wayland-util")) and
       !std.mem.endsWith (u8, entry.name, "private.h") and
-      toolbox.is_c_header_file (entry.name) and entry.kind == .file)
+      toolbox.isCHeader (entry.name) and entry.kind == .file)
         try toolbox.copy (try std.fs.path.join (builder.allocator,
           &.{ tmp_src_path, entry.name, }), try std.fs.path.join (
             builder.allocator, &.{ path.wayland, entry.name, }));
@@ -72,10 +72,9 @@ fn update_wayland (builder: *std.Build, path: *const Paths) !void
 
 fn update_protocols (builder: *std.Build, path: *const Paths) !void
 {
-  try toolbox.run (builder, .{ .argv = &[_][] const u8 { "git", "clone",
-    "--branch", pkg.version.protocols, "--depth", "1",
-    "https://gitlab.freedesktop.org/wayland/wayland-protocols.git", path.tmp,
-  }, });
+  try toolbox.clone (builder,
+    "https://gitlab.freedesktop.org/wayland/wayland-protocols.git",
+    pkg.version.protocols, path.tmp);
 
   for ([_] struct { name: [] const u8, xml: [] const u8, }
     {
@@ -154,11 +153,8 @@ pub fn build (builder: *std.Build) !void
     .optimize = optimize,
   });
 
-  std.debug.print ("[wayland headers dir] {s}\n",
-    .{ try builder.build_root.join (builder.allocator, &.{ "wayland", }), });
-  lib.installHeadersDirectory (.{ .path = try std.fs.path.join (
-    builder.allocator, &.{ "wayland", }), }, ".",
-      .{ .include_extensions = &.{ ".h", }, });
+  toolbox.addHeader (lib, try builder.build_root.join (builder.allocator,
+    &.{ "wayland", }), ".", &.{ ".h", });
 
   builder.installArtifact (lib);
 }
