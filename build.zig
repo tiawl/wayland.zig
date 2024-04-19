@@ -1,7 +1,5 @@
 const std = @import ("std");
 const toolbox = @import ("toolbox");
-const pkg = .{ .name = "wayland.zig", .version =
-  .{ .wayland = "1.22.0", .protocols = "1.33", }, };
 
 const Paths = struct
 {
@@ -9,7 +7,8 @@ const Paths = struct
   tmp: [] const u8 = undefined,
 };
 
-fn update_wayland (builder: *std.Build, path: *const Paths) !void
+fn update_wayland (builder: *std.Build, path: *const Paths,
+  dependencies: *const toolbox.Dependencies) !void
 {
   const tmp_src_path =
     try std.fs.path.join (builder.allocator, &.{ path.tmp, "src", });
@@ -18,9 +17,8 @@ fn update_wayland (builder: *std.Build, path: *const Paths) !void
 
   try toolbox.make (path.wayland);
 
-  try toolbox.clone (builder,
-    "https://gitlab.freedesktop.org/wayland/wayland.git", pkg.version.wayland,
-    path.tmp);
+  try toolbox.clone (builder, dependencies.clone.get ("wayland").?.url,
+    "wayland", path.tmp);
 
   var tmp_dir =
     try std.fs.openDirAbsolute (tmp_src_path, .{ .iterate = true, });
@@ -39,12 +37,13 @@ fn update_wayland (builder: *std.Build, path: *const Paths) !void
             builder.allocator, &.{ path.wayland, entry.name, }));
   }
 
+  const wayland_tag = try toolbox.tag (builder, "wayland");
   var wayland_version_h = try tmp_dir.readFileAlloc (
     builder.allocator, "wayland-version.h.in", std.math.maxInt (usize));
   wayland_version_h = try std.mem.replaceOwned (u8, builder.allocator,
-    wayland_version_h, "@WAYLAND_VERSION@", pkg.version.wayland);
+    wayland_version_h, "@WAYLAND_VERSION@", wayland_tag);
 
-  var tokit = std.mem.tokenizeScalar (u8, pkg.version.wayland, '.');
+  var tokit = std.mem.tokenizeScalar (u8, wayland_tag, '.');
   const match = [_][] const u8 { "@WAYLAND_VERSION_MAJOR@",
     "@WAYLAND_VERSION_MINOR@", "@WAYLAND_VERSION_MICRO@", };
   var index: usize = 0;
@@ -70,11 +69,12 @@ fn update_wayland (builder: *std.Build, path: *const Paths) !void
   try std.fs.deleteTreeAbsolute (path.tmp);
 }
 
-fn update_protocols (builder: *std.Build, path: *const Paths) !void
+fn update_protocols (builder: *std.Build, path: *const Paths,
+  dependencies: *const toolbox.Dependencies) !void
 {
   try toolbox.clone (builder,
-    "https://gitlab.freedesktop.org/wayland/wayland-protocols.git",
-    pkg.version.protocols, path.tmp);
+    dependencies.clone.get ("wayland-protocols").?.url, "wayland-protocols",
+    path.tmp);
 
   for ([_] struct { name: [] const u8, xml: [] const u8, }
     {
@@ -117,7 +117,8 @@ fn update_protocols (builder: *std.Build, path: *const Paths) !void
   try std.fs.deleteTreeAbsolute (path.tmp);
 }
 
-fn update (builder: *std.Build) !void
+fn update (builder: *std.Build,
+  dependencies: *const toolbox.Dependencies) !void
 {
   var path: Paths = .{};
   path.wayland =
@@ -134,8 +135,8 @@ fn update (builder: *std.Build) !void
     }
   };
 
-  try update_wayland (builder, &path);
-  try update_protocols (builder, &path);
+  try update_wayland (builder, &path, dependencies);
+  try update_protocols (builder, &path, dependencies);
 }
 
 pub fn build (builder: *std.Build) !void
@@ -143,8 +144,32 @@ pub fn build (builder: *std.Build) !void
   const target = builder.standardTargetOptions (.{});
   const optimize = builder.standardOptimizeOption (.{});
 
+  const fetch_option = builder.option (bool, "fetch",
+    "Update .versions folder and build.zig.zon then stop execution")
+      orelse false;
+
+  const dependencies = try toolbox.Dependencies.init (builder,
+  .{
+     .toolbox = .{
+       .name = "tiawl/toolbox",
+       .api = toolbox.Repository.API.github,
+     },
+   }, .{
+     .wayland = .{
+       .name = "wayland/wayland",
+       .id = 121,
+       .api = toolbox.Repository.API.gitlab,
+     },
+     .@"wayland-protocols" = .{
+       .name = "wayland/wayland-protocols",
+       .id = 2891,
+       .api = toolbox.Repository.API.gitlab,
+     },
+   }, fetch_option);
+
+  if (fetch_option) try toolbox.fetch (builder, "wayland.zig", &dependencies);
   if (builder.option (bool, "update", "Update binding") orelse false)
-    try update (builder);
+    try update (builder, &dependencies);
 
   const lib = builder.addStaticLibrary (.{
     .name = "wayland",
