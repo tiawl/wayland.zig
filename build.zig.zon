@@ -1,16 +1,16 @@
 .{
-  .name = "wayland.zig",
-  .version = "1.22.0",
-  .minimum_zig_version = "0.12.0",
-  .paths = .{
-    "build.zig",
-    "build.zig.zon",
-    "wayland",
-  },
-  .dependencies = .{
-    .toolbox = .{
-      .url = "https://github.com/tiawl/toolbox/archive/refs/tags/1.7.1.tar.gz",
-      .hash = "1220c8577e94370cd0a08ec89ee91c08fcdb36b5bd42333b3650908d58e38596fddc",
+    .name = "wayland.zig",
+    .version = "1.0.0",
+    .minimum_zig_version = "0.12.0",
+    .paths = .{
+        "build.zig.zon",
+        "wayland",
+        "build.zig",
     },
-  },
+    .dependencies = .{
+        .toolbox = .{
+            .url = "https://github.com/tiawl/toolbox/archive/refs/tags/1.7.1.tar.gz",
+            .hash = "1220c8577e94370cd0a08ec89ee91c08fcdb36b5bd42333b3650908d58e38596fddc",
+        },
+    },
 }
