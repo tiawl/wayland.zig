@@ -17,8 +17,7 @@ fn update_wayland (builder: *std.Build, path: *const Paths,
 
   try toolbox.make (path.wayland);
 
-  try toolbox.clone (builder, dependencies.clone.get ("wayland").?.url,
-    "wayland", path.tmp);
+  try dependencies.clone (builder, "wayland", path.tmp);
 
   var tmp_dir =
     try std.fs.openDirAbsolute (tmp_src_path, .{ .iterate = true, });
@@ -72,9 +71,7 @@ fn update_wayland (builder: *std.Build, path: *const Paths,
 fn update_protocols (builder: *std.Build, path: *const Paths,
   dependencies: *const toolbox.Dependencies) !void
 {
-  try toolbox.clone (builder,
-    dependencies.clone.get ("wayland-protocols").?.url, "wayland-protocols",
-    path.tmp);
+  try dependencies.clone (builder, "wayland-protocols", path.tmp);
 
   for ([_] struct { name: [] const u8, xml: [] const u8, }
     {
