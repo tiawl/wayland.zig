@@ -145,7 +145,7 @@ pub fn build (builder: *std.Build) !void
     "Update .versions folder and build.zig.zon then stop execution")
       orelse false;
 
-  const dependencies = try toolbox.Dependencies.init (builder,
+  var dependencies = try toolbox.Dependencies.init (builder,
   .{
      .toolbox = .{
        .name = "tiawl/toolbox",
@@ -162,9 +162,9 @@ pub fn build (builder: *std.Build) !void
        .id = 2891,
        .api = toolbox.Repository.API.gitlab,
      },
-   }, fetch_option);
+   });
 
-  if (fetch_option) try toolbox.fetch (builder, "wayland.zig", &dependencies);
+  if (fetch_option) try dependencies.fetch (builder, "wayland.zig");
   if (builder.option (bool, "update", "Update binding") orelse false)
     try update (builder, &dependencies);
 
