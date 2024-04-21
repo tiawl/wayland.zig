@@ -36,13 +36,13 @@ fn update_wayland (builder: *std.Build, path: *const Paths,
             builder.allocator, &.{ path.wayland, entry.name, }));
   }
 
-  const wayland_tag = try toolbox.tag (builder, "wayland");
+  const wayland_version = try toolbox.version (builder, "wayland");
   var wayland_version_h = try tmp_dir.readFileAlloc (
     builder.allocator, "wayland-version.h.in", std.math.maxInt (usize));
   wayland_version_h = try std.mem.replaceOwned (u8, builder.allocator,
-    wayland_version_h, "@WAYLAND_VERSION@", wayland_tag);
+    wayland_version_h, "@WAYLAND_VERSION@", wayland_version);
 
-  var tokit = std.mem.tokenizeScalar (u8, wayland_tag, '.');
+  var tokit = std.mem.tokenizeScalar (u8, wayland_version, '.');
   const match = [_][] const u8 { "@WAYLAND_VERSION_MAJOR@",
     "@WAYLAND_VERSION_MINOR@", "@WAYLAND_VERSION_MICRO@", };
   var index: usize = 0;
@@ -134,6 +134,8 @@ fn update (builder: *std.Build,
 
   try update_wayland (builder, &path, dependencies);
   try update_protocols (builder, &path, dependencies);
+
+  try toolbox.clean (builder, &.{ "wayland", }, &.{});
 }
 
 pub fn build (builder: *std.Build) !void
