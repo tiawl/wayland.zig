@@ -215,13 +215,14 @@ static const struct wl_message wl_shm_pool_requests[] = {
 };
 
 WL_PRIVATE const struct wl_interface wl_shm_pool_interface = {
-	"wl_shm_pool", 1,
+	"wl_shm_pool", 2,
 	3, wl_shm_pool_requests,
 	0, NULL,
 };
 
 static const struct wl_message wl_shm_requests[] = {
 	{ "create_pool", "nhi", wayland_types + 18 },
+	{ "release", "2", wayland_types + 0 },
 };
 
 static const struct wl_message wl_shm_events[] = {
@@ -229,8 +230,8 @@ static const struct wl_message wl_shm_events[] = {
 };
 
 WL_PRIVATE const struct wl_interface wl_shm_interface = {
-	"wl_shm", 1,
-	1, wl_shm_requests,
+	"wl_shm", 2,
+	2, wl_shm_requests,
 	1, wl_shm_events,
 };
 
