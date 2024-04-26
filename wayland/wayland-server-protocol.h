@@ -286,9 +286,11 @@ extern const struct wl_interface wl_shm_interface;
  * client provides and updates the contents is defined by the buffer factory
  * interface.
  *
- * If the buffer uses a format that has an alpha channel, the alpha channel
- * is assumed to be premultiplied in the color channels unless otherwise
- * specified.
+ * Color channels are assumed to be electrical rather than optical (in other
+ * words, encoded with a transfer function) unless otherwise specified. If
+ * the buffer uses a format that has an alpha channel, the alpha channel is
+ * assumed to be premultiplied into the electrical color channel values
+ * (after transfer function encoding) unless otherwise specified.
  *
  * Note, because wl_buffer objects are created from multiple independent
  * factory interfaces, the wl_buffer interface is frozen at version 1.
@@ -305,9 +307,11 @@ extern const struct wl_interface wl_shm_interface;
  * client provides and updates the contents is defined by the buffer factory
  * interface.
  *
- * If the buffer uses a format that has an alpha channel, the alpha channel
- * is assumed to be premultiplied in the color channels unless otherwise
- * specified.
+ * Color channels are assumed to be electrical rather than optical (in other
+ * words, encoded with a transfer function) unless otherwise specified. If
+ * the buffer uses a format that has an alpha channel, the alpha channel is
+ * assumed to be premultiplied into the electrical color channel values
+ * (after transfer function encoding) unless otherwise specified.
  *
  * Note, because wl_buffer objects are created from multiple independent
  * factory interfaces, the wl_buffer interface is frozen at version 1.
@@ -853,6 +857,11 @@ extern const struct wl_interface wl_subcompositor_interface;
  *
  * If the parent wl_surface object is destroyed, the sub-surface is
  * unmapped.
+ *
+ * A sub-surface never has the keyboard focus of any seat.
+ *
+ * The wl_surface.offset request is ignored: clients must use set_position
+ * instead to move the sub-surface.
  * @section page_iface_wl_subsurface_api API
  * See @ref iface_wl_subsurface.
  */
@@ -906,6 +915,11 @@ extern const struct wl_interface wl_subcompositor_interface;
  *
  * If the parent wl_surface object is destroyed, the sub-surface is
  * unmapped.
+ *
+ * A sub-surface never has the keyboard focus of any seat.
+ *
+ * The wl_surface.offset request is ignored: clients must use set_position
+ * instead to move the sub-surface.
  */
 extern const struct wl_interface wl_subsurface_interface;
 #endif
@@ -957,7 +971,8 @@ struct wl_display_interface {
 	 * compositor after the callback is fired and as such the client
 	 * must not attempt to use it after that point.
 	 *
-	 * The callback_data passed in the callback is the event serial.
+	 * The callback_data passed in the callback is undefined and should
+	 * be ignored.
 	 * @param callback callback object for the sync request
 	 */
 	void (*sync)(struct wl_client *client,
@@ -1640,6 +1655,66 @@ enum wl_shm_format {
 	 * [63:0] A:B:G:R 16:16:16:16 little endian
 	 */
 	WL_SHM_FORMAT_ABGR16161616 = 0x38344241,
+	/**
+	 * [7:0] C0:C1:C2:C3:C4:C5:C6:C7 1:1:1:1:1:1:1:1 eight pixels/byte
+	 */
+	WL_SHM_FORMAT_C1 = 0x20203143,
+	/**
+	 * [7:0] C0:C1:C2:C3 2:2:2:2 four pixels/byte
+	 */
+	WL_SHM_FORMAT_C2 = 0x20203243,
+	/**
+	 * [7:0] C0:C1 4:4 two pixels/byte
+	 */
+	WL_SHM_FORMAT_C4 = 0x20203443,
+	/**
+	 * [7:0] D0:D1:D2:D3:D4:D5:D6:D7 1:1:1:1:1:1:1:1 eight pixels/byte
+	 */
+	WL_SHM_FORMAT_D1 = 0x20203144,
+	/**
+	 * [7:0] D0:D1:D2:D3 2:2:2:2 four pixels/byte
+	 */
+	WL_SHM_FORMAT_D2 = 0x20203244,
+	/**
+	 * [7:0] D0:D1 4:4 two pixels/byte
+	 */
+	WL_SHM_FORMAT_D4 = 0x20203444,
+	/**
+	 * [7:0] D
+	 */
+	WL_SHM_FORMAT_D8 = 0x20203844,
+	/**
+	 * [7:0] R0:R1:R2:R3:R4:R5:R6:R7 1:1:1:1:1:1:1:1 eight pixels/byte
+	 */
+	WL_SHM_FORMAT_R1 = 0x20203152,
+	/**
+	 * [7:0] R0:R1:R2:R3 2:2:2:2 four pixels/byte
+	 */
+	WL_SHM_FORMAT_R2 = 0x20203252,
+	/**
+	 * [7:0] R0:R1 4:4 two pixels/byte
+	 */
+	WL_SHM_FORMAT_R4 = 0x20203452,
+	/**
+	 * [15:0] x:R 6:10 little endian
+	 */
+	WL_SHM_FORMAT_R10 = 0x20303152,
+	/**
+	 * [15:0] x:R 4:12 little endian
+	 */
+	WL_SHM_FORMAT_R12 = 0x20323152,
+	/**
+	 * [31:0] A:Cr:Cb:Y 8:8:8:8 little endian
+	 */
+	WL_SHM_FORMAT_AVUY8888 = 0x59555641,
+	/**
+	 * [31:0] X:Cr:Cb:Y 8:8:8:8 little endian
+	 */
+	WL_SHM_FORMAT_XVUY8888 = 0x59555658,
+	/**
+	 * 2x2 subsampled Cr:Cb plane 10 bits per channel packed
+	 */
+	WL_SHM_FORMAT_P030 = 0x30333050,
 };
 #endif /* WL_SHM_FORMAT_ENUM */
 
@@ -1665,6 +1740,17 @@ struct wl_shm_interface {
 			    uint32_t id,
 			    int32_t fd,
 			    int32_t size);
+	/**
+	 * release the shm object
+	 *
+	 * Using this request a client can tell the server that it is not
+	 * going to use the shm object anymore.
+	 *
+	 * Objects created via this interface remain unaffected.
+	 * @since 2
+	 */
+	void (*release)(struct wl_client *client,
+			struct wl_resource *resource);
 };
 
 #define WL_SHM_FORMAT 0
@@ -1678,6 +1764,10 @@ struct wl_shm_interface {
  * @ingroup iface_wl_shm
  */
 #define WL_SHM_CREATE_POOL_SINCE_VERSION 1
+/**
+ * @ingroup iface_wl_shm
+ */
+#define WL_SHM_RELEASE_SINCE_VERSION 2
 
 /**
  * @ingroup iface_wl_shm
@@ -2137,6 +2227,10 @@ enum wl_data_device_error {
 	 * given wl_surface has another role
 	 */
 	WL_DATA_DEVICE_ERROR_ROLE = 0,
+	/**
+	 * source has already been used
+	 */
+	WL_DATA_DEVICE_ERROR_USED_SOURCE = 1,
 };
 #endif /* WL_DATA_DEVICE_ERROR_ENUM */
 
@@ -2165,7 +2259,7 @@ struct wl_data_device_interface {
 	 * The icon surface is an optional (can be NULL) surface that
 	 * provides an icon to be moved around with the cursor. Initially,
 	 * the top-left corner of the icon surface is placed at the cursor
-	 * hotspot, but subsequent wl_surface.attach request can move the
+	 * hotspot, but subsequent wl_surface.offset requests can move the
 	 * relative position. Attach requests must be confirmed with
 	 * wl_surface.commit as usual. The icon surface is given the role
 	 * of a drag-and-drop icon. If the icon surface already has another
@@ -2173,6 +2267,10 @@ struct wl_data_device_interface {
 	 *
 	 * The input region is ignored for wl_surfaces with the role of a
 	 * drag-and-drop icon.
+	 *
+	 * The given source may not be used in any further set_selection or
+	 * start_drag requests. Attempting to reuse a previously-used
+	 * source may send a used_source error.
 	 * @param source data source for the eventual transfer
 	 * @param origin surface where the drag originates
 	 * @param icon drag-and-drop icon surface
@@ -2191,6 +2289,10 @@ struct wl_data_device_interface {
 	 * data from the source on behalf of the client.
 	 *
 	 * To unset the selection, set the source to NULL.
+	 *
+	 * The given source may not be used in any further set_selection or
+	 * start_drag requests. Attempting to reuse a previously-used
+	 * source may send a used_source error.
 	 * @param source data source for the selection
 	 * @param serial serial number of the event that triggered this request
 	 */
@@ -2969,8 +3071,9 @@ struct wl_surface_interface {
 	 * underlying buffer storage, the surface contents become undefined
 	 * immediately.
 	 *
-	 * If wl_surface.attach is sent with a NULL wl_buffer, the
-	 * following wl_surface.commit will remove the surface content.
+	 * If wl_surface.attach is sent with a NULL wl_buffer, or the
+	 * pending wl_buffer has been destroyed, the following
+	 * wl_surface.commit will remove the surface content.
 	 * @param buffer buffer of surface contents
 	 * @param x surface-local x coordinate
 	 * @param y surface-local y coordinate
@@ -3127,16 +3230,21 @@ struct wl_surface_interface {
 	 *
 	 * Surface state (input, opaque, and damage regions, attached
 	 * buffers, etc.) is double-buffered. Protocol requests modify the
-	 * pending state, as opposed to the current state in use by the
-	 * compositor. A commit request atomically applies all pending
-	 * state, replacing the current state. After commit, the new
-	 * pending state is as documented for each related request.
+	 * pending state, as opposed to the active state in use by the
+	 * compositor.
 	 *
-	 * On commit, a pending wl_buffer is applied first, and all other
-	 * state second. This means that all coordinates in double-buffered
-	 * state are relative to the new wl_buffer coming into use, except
-	 * for wl_surface.attach itself. If there is no pending wl_buffer,
-	 * the coordinates are relative to the current surface contents.
+	 * A commit request atomically creates a content update from the
+	 * pending state, even if the pending state has not been touched.
+	 * The content update is placed in a queue until it becomes active.
+	 * After commit, the new pending state is as documented for each
+	 * related request.
+	 *
+	 * When the content update is applied, the wl_buffer is applied
+	 * before all other state. This means that all coordinates in
+	 * double-buffered state are relative to the newly attached
+	 * wl_buffers, except for wl_surface.attach itself. If there is no
+	 * newly attached wl_buffer, the coordinates are relative to the
+	 * previous content update.
 	 *
 	 * All requests that need a commit to become effective are
 	 * documented to affect double-buffered state.
@@ -3148,10 +3256,13 @@ struct wl_surface_interface {
 	/**
 	 * sets the buffer transformation
 	 *
-	 * This request sets an optional transformation on how the
-	 * compositor interprets the contents of the buffer attached to the
-	 * surface. The accepted values for the transform parameter are the
-	 * values for wl_output.transform.
+	 * This request sets the transformation that the client has
+	 * already applied to the content of the buffer. The accepted
+	 * values for the transform parameter are the values for
+	 * wl_output.transform.
+	 *
+	 * The compositor applies the inverse of this transformation
+	 * whenever it uses the buffer contents.
 	 *
 	 * Buffer transform is double-buffered state, see
 	 * wl_surface.commit.
@@ -3213,9 +3324,9 @@ struct wl_surface_interface {
 	 * a buffer that is larger (by a factor of scale in each dimension)
 	 * than the desired surface size.
 	 *
-	 * If scale is not positive the invalid_scale protocol error is
-	 * raised.
-	 * @param scale positive scale for interpreting buffer contents
+	 * If scale is not greater than 0 the invalid_scale protocol error
+	 * is raised.
+	 * @param scale scale for interpreting buffer contents
 	 * @since 3
 	 */
 	void (*set_buffer_scale)(struct wl_client *client,
@@ -3713,10 +3824,10 @@ struct wl_pointer_interface {
 	 * where (x, y) are the coordinates of the pointer location, in
 	 * surface-local coordinates.
 	 *
-	 * On surface.attach requests to the pointer surface, hotspot_x and
-	 * hotspot_y are decremented by the x and y parameters passed to
-	 * the request. Attach must be confirmed by wl_surface.commit as
-	 * usual.
+	 * On wl_surface.offset requests to the pointer surface, hotspot_x
+	 * and hotspot_y are decremented by the x and y parameters passed
+	 * to the request. The offset must be applied by wl_surface.commit
+	 * as usual.
 	 *
 	 * The hotspot can also be updated by passing the currently set
 	 * pointer surface to this request with new values for hotspot_x
@@ -4337,11 +4448,10 @@ enum wl_output_subpixel {
 #define WL_OUTPUT_TRANSFORM_ENUM
 /**
  * @ingroup iface_wl_output
- * transform from framebuffer to output
+ * transformation applied to buffer contents
  *
- * This describes the transform that a compositor will apply to a
- * surface to compensate for the rotation or mirroring of an
- * output device.
+ * This describes transformations that clients and compositors apply to
+ * buffer contents.
  *
  * The flipped values correspond to an initial flip around a
  * vertical axis followed by rotation.
@@ -4472,7 +4582,7 @@ struct wl_output_interface {
  * @param subpixel subpixel orientation of the output
  * @param make textual description of the manufacturer
  * @param model textual description of the model
- * @param transform transform that maps framebuffer to output
+ * @param transform additional transformation applied to buffer contents during presentation
  */
 static inline void
 wl_output_send_geometry(struct wl_resource *resource_, int32_t x, int32_t y, int32_t physical_width, int32_t physical_height, int32_t subpixel, const char *make, const char *model, int32_t transform)
@@ -4708,9 +4818,7 @@ struct wl_subsurface_interface {
 	 * Negative values are allowed.
 	 *
 	 * The scheduled coordinates will take effect whenever the state of
-	 * the parent surface is applied. When this happens depends on
-	 * whether the parent surface is in synchronized mode or not. See
-	 * wl_subsurface.set_sync and wl_subsurface.set_desync for details.
+	 * the parent surface is applied.
 	 *
 	 * If more than one set_position request is invoked by the client
 	 * before the commit of the parent surface, the position of a new
@@ -4737,9 +4845,7 @@ struct wl_subsurface_interface {
 	 * The z-order is double-buffered. Requests are handled in order
 	 * and applied immediately to a pending state. The final pending
 	 * state is copied to the active state the next time the state of
-	 * the parent surface is applied. When this happens depends on
-	 * whether the parent surface is in synchronized mode or not. See
-	 * wl_subsurface.set_sync and wl_subsurface.set_desync for details.
+	 * the parent surface is applied.
 	 *
 	 * A new sub-surface is initially added as the top-most in the
 	 * stack of its siblings and parent.

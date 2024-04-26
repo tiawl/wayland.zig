@@ -217,6 +217,10 @@ wl_display_flush_clients(struct wl_display *display);
 void
 wl_display_destroy_clients(struct wl_display *display);
 
+void
+wl_display_set_default_max_buffer_size(struct wl_display *display,
+				       size_t max_buffer_size);
+
 struct wl_client;
 
 typedef void (*wl_global_bind_func_t)(struct wl_client *client, void *data,
@@ -364,6 +368,19 @@ void
 wl_client_for_each_resource(struct wl_client *client,
                             wl_client_for_each_resource_iterator_func_t iterator,
                             void *user_data);
+
+typedef void (*wl_user_data_destroy_func_t)(void *data);
+
+void
+wl_client_set_user_data(struct wl_client *client,
+			void *data,
+			wl_user_data_destroy_func_t dtor);
+
+void *
+wl_client_get_user_data(struct wl_client *client);
+
+void
+wl_client_set_max_buffer_size(struct wl_client *client, size_t max_buffer_size);
 
 /** \class wl_listener
  *
