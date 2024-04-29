@@ -143,11 +143,7 @@ pub fn build (builder: *std.Build) !void
   const target = builder.standardTargetOptions (.{});
   const optimize = builder.standardOptimizeOption (.{});
 
-  const fetch_option = builder.option (bool, "fetch",
-    "Update .versions folder and build.zig.zon then stop execution")
-      orelse false;
-
-  var dependencies = try toolbox.Dependencies.init (builder,
+  const dependencies = try toolbox.Dependencies.init (builder, "wayland.zig",
   .{
      .toolbox = .{
        .name = "tiawl/toolbox",
@@ -166,7 +162,6 @@ pub fn build (builder: *std.Build) !void
      },
    });
 
-  if (fetch_option) try dependencies.fetch (builder, "wayland.zig");
   if (builder.option (bool, "update", "Update binding") orelse false)
     try update (builder, &dependencies);
 
