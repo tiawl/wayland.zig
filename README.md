@@ -4,7 +4,7 @@ This is a fork of [hexops/wayland-headers](https://github.com/hexops/wayland-hea
 
 ## Why this fork ?
 
-The intention under this fork is the same as hexops had when they opened their repository: gather Wayland headers and package them for Zig.
+The intention under this fork is the same as hexops had when they opened their repository: gather Wayland headers and package them to compile GLFW with Zig.
 However this repository has subtle differences for maintainability tasks:
 * no shell scripting,
 * a cron is triggered every day to check Wayland repositories and to update this repository if a new release is available on one of them.
