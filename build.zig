@@ -3,21 +3,40 @@ const toolbox = @import ("toolbox");
 
 const Paths = struct
 {
-  wayland: [] const u8 = undefined,
-  tmp: [] const u8 = undefined,
+  // prefixed attributes
+  __tmp: [] const u8 = undefined,
+  __wayland: [] const u8 = undefined,
+
+  // mandatory getters
+  pub fn getTmp (self: @This ()) [] const u8 { return self.__tmp; }
+  pub fn getWayland (self: @This ()) [] const u8 { return self.__wayland; }
+
+  // mandatory init
+  pub fn init (builder: *std.Build) !@This ()
+  {
+    var self = @This () {
+      .__wayland = try builder.build_root.join (builder.allocator,
+        &.{ "wayland", }),
+    };
+
+    self.__tmp = try std.fs.path.join (builder.allocator,
+      &.{ self.getWayland (), "tmp", });
+
+    return self;
+  }
 };
 
 fn update_wayland (builder: *std.Build, path: *const Paths,
   dependencies: *const toolbox.Dependencies) !void
 {
   const tmp_src_path =
-    try std.fs.path.join (builder.allocator, &.{ path.tmp, "src", });
+    try std.fs.path.join (builder.allocator, &.{ path.getTmp (), "src", });
   const xml_path = try std.fs.path.join (builder.allocator,
-    &.{ path.tmp, "protocol", "wayland.xml", });
+    &.{ path.getTmp (), "protocol", "wayland.xml", });
 
-  try toolbox.make (path.wayland);
+  try toolbox.make (path.getWayland ());
 
-  try dependencies.clone (builder, "wayland", path.tmp);
+  try dependencies.clone (builder, "wayland", path.getTmp ());
 
   var tmp_dir =
     try std.fs.openDirAbsolute (tmp_src_path, .{ .iterate = true, });
@@ -33,7 +52,7 @@ fn update_wayland (builder: *std.Build, path: *const Paths,
       toolbox.isCHeader (entry.name) and entry.kind == .file)
         try toolbox.copy (try std.fs.path.join (builder.allocator,
           &.{ tmp_src_path, entry.name, }), try std.fs.path.join (
-            builder.allocator, &.{ path.wayland, entry.name, }));
+            builder.allocator, &.{ path.getWayland (), entry.name, }));
   }
 
   const wayland_version = try toolbox.version (builder, "wayland");
@@ -53,49 +72,50 @@ fn update_wayland (builder: *std.Build, path: *const Paths,
     index += 1;
   }
 
-  try toolbox.write (path.wayland, "wayland-version.h", wayland_version_h);
+  try toolbox.write (path.getWayland (), "wayland-version.h",
+    wayland_version_h);
 
   try toolbox.run (builder, .{ .argv = &[_][] const u8 { "wayland-scanner",
     "server-header", xml_path, try std.fs.path.join (builder.allocator,
-      &.{ path.wayland, "wayland-server-protocol.h", }), }, });
+      &.{ path.getWayland (), "wayland-server-protocol.h", }), }, });
   try toolbox.run (builder, .{ .argv = &[_][] const u8 { "wayland-scanner",
     "client-header", xml_path, try std.fs.path.join (builder.allocator,
-      &.{ path.wayland, "wayland-client-protocol.h", }), }, });
+      &.{ path.getWayland (), "wayland-client-protocol.h", }), }, });
   try toolbox.run (builder, .{ .argv = &[_][] const u8 { "wayland-scanner",
     "private-code", xml_path, try std.fs.path.join (builder.allocator,
-      &.{ path.wayland, "wayland-client-protocol-code.h", }), }, });
+      &.{ path.getWayland (), "wayland-client-protocol-code.h", }), }, });
 
-  try std.fs.deleteTreeAbsolute (path.tmp);
+  try std.fs.deleteTreeAbsolute (path.getTmp ());
 }
 
 fn update_protocols (builder: *std.Build, path: *const Paths,
   dependencies: *const toolbox.Dependencies) !void
 {
-  try dependencies.clone (builder, "wayland-protocols", path.tmp);
+  try dependencies.clone (builder, "wayland-protocols", path.getTmp ());
 
   for ([_] struct { name: [] const u8, xml: [] const u8, }
     {
       .{ .name = "xdg-shell", .xml = try std.fs.path.join (builder.allocator,
-        &.{ path.tmp, "stable", "xdg-shell", "xdg-shell.xml", }), },
+        &.{ path.getTmp (), "stable", "xdg-shell", "xdg-shell.xml", }), },
       .{ .name = "xdg-decoration-unstable-v1", .xml = try std.fs.path.join (
-        builder.allocator, &.{ path.tmp, "unstable", "xdg-decoration",
+        builder.allocator, &.{ path.getTmp (), "unstable", "xdg-decoration",
           "xdg-decoration-unstable-v1.xml", }), },
       .{ .name = "viewporter", .xml = try std.fs.path.join (builder.allocator,
-        &.{ path.tmp, "stable", "viewporter", "viewporter.xml", }), },
+        &.{ path.getTmp (), "stable", "viewporter", "viewporter.xml", }), },
       .{ .name = "relative-pointer-unstable-v1", .xml = try std.fs.path.join (
-        builder.allocator, &.{ path.tmp, "unstable", "relative-pointer",
+        builder.allocator, &.{ path.getTmp (), "unstable", "relative-pointer",
           "relative-pointer-unstable-v1.xml", }), },
       .{ .name = "pointer-constraints-unstable-v1", .xml =
-        try std.fs.path.join (builder.allocator, &.{ path.tmp, "unstable",
+        try std.fs.path.join (builder.allocator, &.{ path.getTmp (), "unstable",
           "pointer-constraints", "pointer-constraints-unstable-v1.xml", }), },
       .{ .name = "fractional-scale-v1", .xml = try std.fs.path.join (
-        builder.allocator, &.{ path.tmp, "staging", "fractional-scale",
+        builder.allocator, &.{ path.getTmp (), "staging", "fractional-scale",
           "fractional-scale-v1.xml", }), },
       .{ .name = "xdg-activation-v1", .xml = try std.fs.path.join (
-        builder.allocator, &.{ path.tmp, "staging", "xdg-activation",
+        builder.allocator, &.{ path.getTmp (), "staging", "xdg-activation",
           "xdg-activation-v1.xml", }), },
       .{ .name = "idle-inhibit-unstable-v1", .xml = try std.fs.path.join (
-        builder.allocator, &.{ path.tmp, "unstable", "idle-inhibit",
+        builder.allocator, &.{ path.getTmp (), "unstable", "idle-inhibit",
           "idle-inhibit-unstable-v1.xml", }), },
     }) |gen|
   {
@@ -105,25 +125,21 @@ fn update_protocols (builder: *std.Build, path: *const Paths,
       builder.allocator, "{s}-client-protocol-code.h", .{ gen.name, });
     try toolbox.run (builder, .{ .argv = &[_][] const u8 { "wayland-scanner",
       "client-header", gen.xml, try std.fs.path.join (builder.allocator,
-        &.{ path.wayland, protocol_h, }), }, });
+        &.{ path.getWayland (), protocol_h, }), }, });
     try toolbox.run (builder, .{ .argv = &[_][] const u8 { "wayland-scanner",
       "private-code", gen.xml, try std.fs.path.join (builder.allocator,
-        &.{ path.wayland, protocol_code_h, }), }, });
+        &.{ path.getWayland (), protocol_code_h, }), }, });
   }
 
-  try std.fs.deleteTreeAbsolute (path.tmp);
+  try std.fs.deleteTreeAbsolute (path.getTmp ());
 }
 
 fn update (builder: *std.Build,
   dependencies: *const toolbox.Dependencies) !void
 {
-  var path: Paths = .{};
-  path.wayland =
-    try builder.build_root.join (builder.allocator, &.{ "wayland", });
-  path.tmp =
-    try std.fs.path.join (builder.allocator, &.{ path.wayland, "tmp", });
+  const path = try Paths.init (builder);
 
-  std.fs.deleteTreeAbsolute (path.wayland) catch |err|
+  std.fs.deleteTreeAbsolute (path.getWayland ()) catch |err|
   {
     switch (err)
     {
