@@ -22,10 +22,10 @@ This repository is automatically updated when a new release is available from th
 * [wayland/wayland](https://gitlab.freedesktop.org/wayland/wayland)
 * [wayland/wayland-protocols](https://gitlab.freedesktop.org/wayland/wayland-protocols)
 * [tiawl/toolbox](https://github.com/tiawl/toolbox)
-* [tiawl/spaceporn-dep-action-bot](https://github.com/tiawl/spaceporn-dep-action-bot)
-* [tiawl/spaceporn-dep-action-ci](https://github.com/tiawl/spaceporn-dep-action-ci)
-* [tiawl/spaceporn-dep-action-cd-ping](https://github.com/tiawl/spaceporn-dep-action-cd-ping)
-* [tiawl/spaceporn-dep-action-cd-pong](https://github.com/tiawl/spaceporn-dep-action-cd-pong)
+* [tiawl/spaceporn-action-bot](https://github.com/tiawl/spaceporn-action-bot)
+* [tiawl/spaceporn-action-ci](https://github.com/tiawl/spaceporn-action-ci)
+* [tiawl/spaceporn-action-cd-ping](https://github.com/tiawl/spaceporn-action-cd-ping)
+* [tiawl/spaceporn-action-cd-pong](https://github.com/tiawl/spaceporn-action-cd-pong)
 
 ## `zig build` options
 
