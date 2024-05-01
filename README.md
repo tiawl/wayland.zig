@@ -1,13 +1,13 @@
 # wayland.zig
 
-This is a fork of [hexops/wayland-headers](https://github.com/hexops/wayland-headers) which itself gather various Wayland headers @glfw needs.
+This is a fork of [hexops/wayland-headers][1] which itself gather various [Wayland][2] headers [GLFW][3] needs.
 
 ## Why this forkception ?
 
-The intention under this fork is the same as hexops had when they opened their repository: gather Wayland headers and package them to compile @glfw with @ziglang.
+The intention under this fork is the same as [hexops][13] had when they opened their repository: gather [Wayland][2] headers and package them to compile [GLFW][3] with [Zig][4].
 However this repository has subtle differences for maintainability tasks:
 * No shell scripting,
-* A cron runs every day to check Wayland repositories. Then it updates this repository if a new release is available.
+* A cron runs every day to check [Wayland][2] repositories. Then it updates this repository if a new release is available.
 
 Here the repositories' version used by this fork:
 * [wayland/wayland](https://github.com/tiawl/wayland.zig/blob/trunk/.versions/wayland)
@@ -16,16 +16,16 @@ Here the repositories' version used by this fork:
 ## CICD reminder
 
 These repositories are automatically updated when a new release is available:
-* [tiawl/glfw.zig](https://github.com/tiawl/glfw.zig)
+* [tiawl/glfw.zig][5]
 
 This repository is automatically updated when a new release is available from these repositories:
-* [wayland/wayland](https://gitlab.freedesktop.org/wayland/wayland)
-* [wayland/wayland-protocols](https://gitlab.freedesktop.org/wayland/wayland-protocols)
-* [tiawl/toolbox](https://github.com/tiawl/toolbox)
-* [tiawl/spaceporn-action-bot](https://github.com/tiawl/spaceporn-action-bot)
-* [tiawl/spaceporn-action-ci](https://github.com/tiawl/spaceporn-action-ci)
-* [tiawl/spaceporn-action-cd-ping](https://github.com/tiawl/spaceporn-action-cd-ping)
-* [tiawl/spaceporn-action-cd-pong](https://github.com/tiawl/spaceporn-action-cd-pong)
+* [wayland/wayland][6]
+* [wayland/wayland-protocols][7]
+* [tiawl/toolbox][8]
+* [tiawl/spaceporn-action-bot][9]
+* [tiawl/spaceporn-action-ci][10]
+* [tiawl/spaceporn-action-cd-ping][11]
+* [tiawl/spaceporn-action-cd-pong][12]
 
 ## `zig build` options
 
@@ -38,3 +38,17 @@ These additional options have been implemented for maintainability tasks:
 ## License
 
 The unprotected parts of this repository are under MIT License. For everything else, see with their respective owners.
+
+[1]:https://github.com/hexops/wayland-headers
+[2]:https://gitlab.freedesktop.org/wayland
+[3]:https://github.com/glfw/glfw
+[4]:https://github.com/ziglang/zig
+[5]:https://github.com/tiawl/glfw.zig
+[6]:https://gitlab.freedesktop.org/wayland/wayland
+[7]:https://gitlab.freedesktop.org/wayland/wayland-protocols
+[8]:https://github.com/tiawl/toolbox
+[9]:https://github.com/tiawl/spaceporn-action-bot
+[10]:https://github.com/tiawl/spaceporn-action-ci
+[11]:https://github.com/tiawl/spaceporn-action-cd-ping
+[12]:https://github.com/tiawl/spaceporn-action-cd-pong
+[13]:https://github.com/hexops
