@@ -2,14 +2,14 @@
 
 This is a fork of [hexops/wayland-headers](https://github.com/hexops/wayland-headers) which itself gather various Wayland headers @glfw needs.
 
-## Why this fork ?
+## Why this forkception ?
 
 The intention under this fork is the same as hexops had when they opened their repository: gather Wayland headers and package them to compile @glfw with @ziglang.
 However this repository has subtle differences for maintainability tasks:
 * No shell scripting,
 * A cron runs every day to check Wayland repositories. Then it updates this repository if a new release is available on one of them.
 
-You can find the repositories' versions used here:
+Here the repositories' version used by this fork:
 * [wayland/wayland](https://github.com/tiawl/wayland.zig/blob/trunk/.versions/wayland)
 * [wayland/wayland-protocols](https://github.com/tiawl/wayland.zig/blob/trunk/.versions/wayland-protocols)
 
