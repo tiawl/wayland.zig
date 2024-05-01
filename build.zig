@@ -160,6 +160,7 @@ pub fn build (builder: *std.Build) !void
   const optimize = builder.standardOptimizeOption (.{});
 
   const dependencies = try toolbox.Dependencies.init (builder, "wayland.zig",
+  &.{ "wayland", },
   .{
      .toolbox = .{
        .name = "tiawl/toolbox",
