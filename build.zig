@@ -169,10 +169,12 @@ pub fn build (builder: *std.Build) !void
    }, .{
      .wayland = .{
        .name = "wayland/wayland",
+       .domain = "freedesktop.org",
        .host = toolbox.Repository.Host.gitlab,
      },
      .@"wayland-protocols" = .{
        .name = "wayland/wayland-protocols",
+       .domain = "freedesktop.org",
        .host = toolbox.Repository.Host.gitlab,
      },
    });
