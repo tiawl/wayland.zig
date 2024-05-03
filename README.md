@@ -5,6 +5,7 @@ This is a fork of [hexops/wayland-headers][1] which itself gather various [Wayla
 ## Why this forkception ?
 
 The intention under this fork is the same as [hexops][13] had when they opened their repository: gather [Wayland][2] headers and package them to compile [GLFW][3] with [Zig][4].
+
 However this repository has subtle differences for maintainability tasks:
 * No shell scripting,
 * A cron runs every day to check [Wayland][2] repositories. Then it updates this repository if a new release is available.
