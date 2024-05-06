@@ -55,7 +55,7 @@ fn update_wayland (builder: *std.Build, path: *const Paths,
             builder.allocator, &.{ path.getWayland (), entry.name, }));
   }
 
-  const wayland_version = try toolbox.version (builder, "wayland");
+  const wayland_version = try toolbox.reference (builder, "wayland");
   var wayland_version_h = try tmp_dir.readFileAlloc (
     builder.allocator, "wayland-version.h.in", std.math.maxInt (usize));
   wayland_version_h = try std.mem.replaceOwned (u8, builder.allocator,
