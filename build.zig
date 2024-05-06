@@ -165,17 +165,20 @@ pub fn build (builder: *std.Build) !void
      .toolbox = .{
        .name = "tiawl/toolbox",
        .host = toolbox.Repository.Host.github,
+       .ref = toolbox.Repository.Reference.tag,
      },
    }, .{
      .wayland = .{
        .name = "wayland/wayland",
        .domain = "freedesktop.org",
        .host = toolbox.Repository.Host.gitlab,
+       .ref = toolbox.Repository.Reference.tag,
      },
      .@"wayland-protocols" = .{
        .name = "wayland/wayland-protocols",
        .domain = "freedesktop.org",
        .host = toolbox.Repository.Host.gitlab,
+       .ref = toolbox.Repository.Reference.tag,
      },
    });
 
