@@ -659,6 +659,16 @@ extern const struct wl_interface wl_pointer_interface;
  *
  * The wl_keyboard interface represents one or more keyboards
  * associated with a seat.
+ *
+ * Each wl_keyboard has the following logical state:
+ *
+ * - an active surface (possibly null),
+ * - the keys currently logically down,
+ * - the active modifiers,
+ * - the active group.
+ *
+ * By default, the active surface is null, the keys currently logically down
+ * are empty, the active modifiers and the active group are 0.
  * @section page_iface_wl_keyboard_api API
  * See @ref iface_wl_keyboard.
  */
@@ -667,6 +677,16 @@ extern const struct wl_interface wl_pointer_interface;
  *
  * The wl_keyboard interface represents one or more keyboards
  * associated with a seat.
+ *
+ * Each wl_keyboard has the following logical state:
+ *
+ * - an active surface (possibly null),
+ * - the keys currently logically down,
+ * - the active modifiers,
+ * - the active group.
+ *
+ * By default, the active surface is null, the keys currently logically down
+ * are empty, the active modifiers and the active group are 0.
  */
 extern const struct wl_interface wl_keyboard_interface;
 #endif
@@ -4190,7 +4210,7 @@ wl_keyboard_send_keymap(struct wl_resource *resource_, uint32_t format, int32_t 
  * @param resource_ The client's resource
  * @param serial serial number of the enter event
  * @param surface surface gaining keyboard focus
- * @param keys the currently pressed keys
+ * @param keys the keys currently logically down
  */
 static inline void
 wl_keyboard_send_enter(struct wl_resource *resource_, uint32_t serial, struct wl_resource *surface, struct wl_array *keys)
