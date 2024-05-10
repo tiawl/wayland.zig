@@ -656,6 +656,16 @@ extern const struct wl_interface wl_pointer_interface;
  *
  * The wl_keyboard interface represents one or more keyboards
  * associated with a seat.
+ *
+ * Each wl_keyboard has the following logical state:
+ *
+ * - an active surface (possibly null),
+ * - the keys currently logically down,
+ * - the active modifiers,
+ * - the active group.
+ *
+ * By default, the active surface is null, the keys currently logically down
+ * are empty, the active modifiers and the active group are 0.
  * @section page_iface_wl_keyboard_api API
  * See @ref iface_wl_keyboard.
  */
@@ -664,6 +674,16 @@ extern const struct wl_interface wl_pointer_interface;
  *
  * The wl_keyboard interface represents one or more keyboards
  * associated with a seat.
+ *
+ * Each wl_keyboard has the following logical state:
+ *
+ * - an active surface (possibly null),
+ * - the keys currently logically down,
+ * - the active modifiers,
+ * - the active group.
+ *
+ * By default, the active surface is null, the keys currently logically down
+ * are empty, the active modifiers and the active group are 0.
  */
 extern const struct wl_interface wl_keyboard_interface;
 #endif
@@ -5174,9 +5194,15 @@ struct wl_keyboard_listener {
 	 *
 	 * The compositor must send the wl_keyboard.modifiers event after
 	 * this event.
+	 *
+	 * In the wl_keyboard logical state, this event sets the active
+	 * surface to the surface argument and the keys currently logically
+	 * down to the keys in the keys argument. The compositor must not
+	 * send this event if the wl_keyboard already had an active surface
+	 * immediately before this event.
 	 * @param serial serial number of the enter event
 	 * @param surface surface gaining keyboard focus
-	 * @param keys the currently pressed keys
+	 * @param keys the keys currently logically down
 	 */
 	void (*enter)(void *data,
 		      struct wl_keyboard *wl_keyboard,
@@ -5192,10 +5218,10 @@ struct wl_keyboard_listener {
 	 * The leave notification is sent before the enter notification for
 	 * the new focus.
 	 *
-	 * After this event client must assume that no keys are pressed, it
-	 * must stop key repeating if there's some going on and until it
-	 * receives the next wl_keyboard.modifiers event, the client must
-	 * also assume no modifiers are active.
+	 * In the wl_keyboard logical state, this event resets all values
+	 * to their defaults. The compositor must not send this event if
+	 * the active surface of the wl_keyboard was not equal to the
+	 * surface argument immediately before this event.
 	 * @param serial serial number of the leave event
 	 * @param surface surface that lost keyboard focus
 	 */
@@ -5215,8 +5241,15 @@ struct wl_keyboard_listener {
 	 * If this event produces a change in modifiers, then the resulting
 	 * wl_keyboard.modifiers event must be sent after this event.
 	 *
-	 * The compositor must not send this event without a surface of the
-	 * client having keyboard focus.
+	 * In the wl_keyboard logical state, this event adds the key to the
+	 * keys currently logically down (if the state argument is pressed)
+	 * or removes the key from the keys currently logically down (if
+	 * the state argument is released). The compositor must not send
+	 * this event if the wl_keyboard did not have an active surface
+	 * immediately before this event. The compositor must not send this
+	 * event if state is pressed (resp. released) and the key was
+	 * already logically down (resp. was not logically down)
+	 * immediately before this event.
 	 * @param serial serial number of the key event
 	 * @param time timestamp with millisecond granularity
 	 * @param key key that produced the event
@@ -5242,6 +5275,9 @@ struct wl_keyboard_listener {
 	 * the next wl_keyboard.modifiers event. In order to reset the
 	 * modifier state again, the compositor can send a
 	 * wl_keyboard.modifiers event with no pressed modifiers.
+	 *
+	 * In the wl_keyboard logical state, this event updates the
+	 * modifiers and group.
 	 * @param serial serial number of the modifiers event
 	 * @param mods_depressed depressed modifiers
 	 * @param mods_latched latched modifiers
