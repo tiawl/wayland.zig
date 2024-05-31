@@ -3091,9 +3091,16 @@ struct wl_surface_interface {
 	 * underlying buffer storage, the surface contents become undefined
 	 * immediately.
 	 *
-	 * If wl_surface.attach is sent with a NULL wl_buffer, or the
-	 * pending wl_buffer has been destroyed, the following
-	 * wl_surface.commit will remove the surface content.
+	 * If wl_surface.attach is sent with a NULL wl_buffer, the
+	 * following wl_surface.commit will remove the surface content.
+	 *
+	 * If a pending wl_buffer has been destroyed, the result is not
+	 * specified. Many compositors are known to remove the surface
+	 * content on the following wl_surface.commit, but this behaviour
+	 * is not universal. Clients seeking to maximise compatibility
+	 * should not destroy pending buffers and should ensure that they
+	 * explicitly remove content from surfaces, even after destroying
+	 * buffers.
 	 * @param buffer buffer of surface contents
 	 * @param x surface-local x coordinate
 	 * @param y surface-local y coordinate

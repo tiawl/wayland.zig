@@ -3925,9 +3925,15 @@ wl_surface_destroy(struct wl_surface *wl_surface)
  * mutates the underlying buffer storage, the surface contents become
  * undefined immediately.
  *
- * If wl_surface.attach is sent with a NULL wl_buffer, or the pending
- * wl_buffer has been destroyed, the following wl_surface.commit will
- * remove the surface content.
+ * If wl_surface.attach is sent with a NULL wl_buffer, the
+ * following wl_surface.commit will remove the surface content.
+ *
+ * If a pending wl_buffer has been destroyed, the result is not specified.
+ * Many compositors are known to remove the surface content on the following
+ * wl_surface.commit, but this behaviour is not universal. Clients seeking to
+ * maximise compatibility should not destroy pending buffers and should
+ * ensure that they explicitly remove content from surfaces, even after
+ * destroying buffers.
  */
 static inline void
 wl_surface_attach(struct wl_surface *wl_surface, struct wl_buffer *buffer, int32_t x, int32_t y)
