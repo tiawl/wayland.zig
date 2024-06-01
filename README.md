@@ -19,8 +19,8 @@ The current usage of this repository is centered around [tiawl/glfw.zig][3] comp
 The [Zig][4] part of this package is relying on the latest [Zig][4] release (0.12.0) and will only be updated for the next one (so for the 0.13.0).
 
 Here the repositories' version used by this fork:
-* [wayland/wayland](https://github.com/tiawl/wayland.zig/blob/trunk/.versions/wayland)
-* [wayland/wayland-protocols](https://github.com/tiawl/wayland.zig/blob/trunk/.versions/wayland-protocols)
+* [wayland/wayland](https://github.com/tiawl/wayland.zig/blob/trunk/.references/wayland)
+* [wayland/wayland-protocols](https://github.com/tiawl/wayland.zig/blob/trunk/.references/wayland-protocols)
 
 ## CICD reminder
 
@@ -40,7 +40,7 @@ This repository is automatically updated when a new release is available from th
 
 These additional options have been implemented for maintainability tasks:
 ```
-  -Dfetch   Update .versions folder and build.zig.zon then stop execution
+  -Dfetch   Update .references folder and build.zig.zon then stop execution
   -Dupdate  Update binding
 ```
 
