@@ -119,10 +119,8 @@ fn update_protocols (builder: *std.Build, path: *const Paths,
           "idle-inhibit-unstable-v1.xml", }), },
     }) |gen|
   {
-    const protocol_h = try std.fmt.allocPrint (
-      builder.allocator, "{s}-client-protocol.h", .{ gen.name, });
-    const protocol_code_h = try std.fmt.allocPrint (
-      builder.allocator, "{s}-client-protocol-code.h", .{ gen.name, });
+    const protocol_h = builder.fmt ("{s}-client-protocol.h", .{ gen.name, });
+    const protocol_code_h = builder.fmt ("{s}-client-protocol-code.h", .{ gen.name, });
     try toolbox.run (builder, .{ .argv = &[_][] const u8 { "wayland-scanner",
       "client-header", gen.xml, try std.fs.path.join (builder.allocator,
         &.{ path.getWayland (), protocol_h, }), }, });
