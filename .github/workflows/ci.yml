@@ -54,5 +54,5 @@ jobs:
       run: |
         opts="$(printf '%s' "${PR_BODY}" | sed -n "s/^\[${REPO} fetch opts\] \(.*\)/\1/p")"
         set -f
-        zig build -Dfetch
+        zig build -Dfetch ${opts}
         set +f
