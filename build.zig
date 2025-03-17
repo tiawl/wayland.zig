@@ -248,13 +248,13 @@ pub fn build(builder: *std.Build) !void {
     const target = builder.standardTargetOptions(.{});
     const optimize = builder.standardOptimizeOption(.{});
 
-    const dependencies = try toolbox.Dependencies.init(builder, "wayland.zig", &.{
+    const dependencies = try toolbox.Dependencies.init(builder, .wayland_zig, "0x879377398f3e6626", &.{
         "wayland",
     }, .{
         .toolbox = .{
             .name = "tiawl/toolbox",
             .host = toolbox.Repository.Host.github,
-            .ref = toolbox.Repository.Reference.tag,
+            .ref = toolbox.Repository.Reference.commit,
         },
     }, .{
         .wayland = .{
