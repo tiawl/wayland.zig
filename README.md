@@ -4,7 +4,7 @@ This is a fork of [hexops/wayland-headers][1] which itself gather various [Wayla
 
 ## Why this forkception ?
 
-The intention under this fork is the same as [hexops][13] had when they opened their repository: gather [Wayland][2] headers and package them to compile [GLFW][3] with [Zig][4].
+The intention under this fork is the same as [hexops][9] had when they opened their repository: gather [Wayland][2] headers and package them to compile [GLFW][3] with [Zig][4].
 
 However this repository has subtle differences for maintainability tasks:
 * No shell scripting,
@@ -31,10 +31,6 @@ This repository is automatically updated when a new release is available from th
 * [wayland/wayland][6]
 * [wayland/wayland-protocols][7]
 * [tiawl/toolbox][8]
-* [tiawl/spaceporn-action-bot][9]
-* [tiawl/spaceporn-action-ci][10]
-* [tiawl/spaceporn-action-cd-ping][11]
-* [tiawl/spaceporn-action-cd-pong][12]
 
 ## `zig build` options
 
@@ -60,8 +56,4 @@ The parts of this repository originated from this repository are dedicated to th
 [6]:https://gitlab.freedesktop.org/wayland/wayland
 [7]:https://gitlab.freedesktop.org/wayland/wayland-protocols
 [8]:https://github.com/tiawl/toolbox
-[9]:https://github.com/tiawl/spaceporn-action-bot
-[10]:https://github.com/tiawl/spaceporn-action-ci
-[11]:https://github.com/tiawl/spaceporn-action-cd-ping
-[12]:https://github.com/tiawl/spaceporn-action-cd-pong
-[13]:https://github.com/hexops
+[9]:https://github.com/hexops
