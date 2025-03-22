@@ -34,9 +34,9 @@ const Paths = struct {
 fn update_wayland(builder: *std.Build, path: *const Paths, dependencies: *const toolbox.Dependencies) !void {
     const tmp_src_path =
         try std.fs.path.join(builder.allocator, &.{
-        path.getTmp(),
-        "src",
-    });
+            path.getTmp(),
+            "src",
+        });
     const xml_path = try std.fs.path.join(builder.allocator, &.{
         path.getTmp(),
         "protocol",
@@ -49,8 +49,8 @@ fn update_wayland(builder: *std.Build, path: *const Paths, dependencies: *const 
 
     var tmp_dir =
         try std.fs.openDirAbsolute(tmp_src_path, .{
-        .iterate = true,
-    });
+            .iterate = true,
+        });
     defer tmp_dir.close();
 
     var it = tmp_dir.iterate();
@@ -230,11 +230,11 @@ fn update(builder: *std.Build, dependencies: *const toolbox.Dependencies) !void 
 
     std.fs.deleteTreeAbsolute(path.getWayland()) catch |err|
         {
-        switch (err) {
-            error.FileNotFound => {},
-            else => return err,
-        }
-    };
+            switch (err) {
+                error.FileNotFound => {},
+                else => return err,
+            }
+        };
 
     try update_wayland(builder, &path, dependencies);
     try update_protocols(builder, &path, dependencies);
