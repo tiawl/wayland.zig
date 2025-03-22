@@ -2,55 +2,46 @@ const std = @import("std");
 const toolbox = @import("toolbox");
 
 const Paths = struct {
-    // prefixed attributes
-    __tmp: []const u8 = undefined,
-    __wayland: []const u8 = undefined,
+    __tmp: []const u8,
+    __wayland: []const u8,
 
-    // mandatory getters
-    pub fn getTmp(self: @This()) []const u8 {
+    fn getTmp(self: @This()) []const u8 {
         return self.__tmp;
     }
-    pub fn getWayland(self: @This()) []const u8 {
+
+    fn getWayland(self: @This()) []const u8 {
         return self.__wayland;
     }
 
-    // mandatory init
-    pub fn init(builder: *std.Build) !@This() {
-        var self = @This(){
-            .__wayland = try builder.build_root.join(builder.allocator, &.{
-                "wayland",
-            }),
-        };
-
-        self.__tmp = try std.fs.path.join(builder.allocator, &.{
-            self.getWayland(),
-            "tmp",
+    fn init() !@This() {
+        const wayland_path = try toolbox.instance().getBuilder().build_root.join(toolbox.instance().getBuilder().allocator, &.{
+            "wayland",
         });
 
-        return self;
+        return .{
+            .__wayland = wayland_path,
+            .__tmp = toolbox.instance().ptrBuilder().pathJoin(&.{
+                wayland_path, "tmp",
+            }),
+        };
     }
 };
 
-fn update_wayland(builder: *std.Build, path: *const Paths, dependencies: *const toolbox.Dependencies) !void {
-    const tmp_src_path =
-        try std.fs.path.join(builder.allocator, &.{
-            path.getTmp(),
-            "src",
-        });
-    const xml_path = try std.fs.path.join(builder.allocator, &.{
-        path.getTmp(),
-        "protocol",
-        "wayland.xml",
+fn update_wayland(path: *const Paths, dependencies: *const toolbox.Dependencies) !void {
+    const tmp_src_path = toolbox.instance().ptrBuilder().pathJoin(&.{
+        path.getTmp(), "src",
+    });
+    const xml_path = toolbox.instance().ptrBuilder().pathJoin(&.{
+        path.getTmp(), "protocol", "wayland.xml",
     });
 
-    try toolbox.make(path.getWayland());
+    try toolbox.instance().make(path.getWayland());
 
-    try dependencies.clone(builder, "wayland", path.getTmp());
+    try dependencies.clone("wayland", path.getTmp());
 
-    var tmp_dir =
-        try std.fs.openDirAbsolute(tmp_src_path, .{
-            .iterate = true,
-        });
+    var tmp_dir = try std.fs.openDirAbsolute(tmp_src_path, .{
+        .iterate = true,
+    });
     defer tmp_dir.close();
 
     var it = tmp_dir.iterate();
@@ -60,63 +51,49 @@ fn update_wayland(builder: *std.Build, path: *const Paths, dependencies: *const 
             std.mem.startsWith(u8, entry.name, "wayland-util")) and
             !std.mem.endsWith(u8, entry.name, "private.h") and
             toolbox.isCHeader(entry.name) and entry.kind == .file)
-            try toolbox.copy(try std.fs.path.join(builder.allocator, &.{
-                tmp_src_path,
-                entry.name,
-            }), try std.fs.path.join(builder.allocator, &.{
-                path.getWayland(),
-                entry.name,
+        {
+            try toolbox.instance().copy(toolbox.instance().ptrBuilder().pathJoin(&.{
+                tmp_src_path, entry.name,
+            }), toolbox.instance().ptrBuilder().pathJoin(&.{
+                path.getWayland(), entry.name,
             }));
+        }
     }
 
-    const wayland_version = try toolbox.reference(builder, "wayland");
-    var wayland_version_h = try tmp_dir.readFileAlloc(builder.allocator, "wayland-version.h.in", std.math.maxInt(usize));
-    wayland_version_h = try std.mem.replaceOwned(u8, builder.allocator, wayland_version_h, "@WAYLAND_VERSION@", wayland_version);
+    const wayland_version = try toolbox.reference("wayland");
+    var wayland_version_h = try tmp_dir.readFileAlloc(toolbox.instance().getBuilder().allocator, "wayland-version.h.in", std.math.maxInt(usize));
+    wayland_version_h = try std.mem.replaceOwned(u8, toolbox.instance().getBuilder().allocator, wayland_version_h, "@WAYLAND_VERSION@", wayland_version);
 
     var tokit = std.mem.tokenizeScalar(u8, wayland_version, '.');
     const match = [_][]const u8{
-        "@WAYLAND_VERSION_MAJOR@",
-        "@WAYLAND_VERSION_MINOR@",
-        "@WAYLAND_VERSION_MICRO@",
+        "@WAYLAND_VERSION_MAJOR@", "@WAYLAND_VERSION_MINOR@", "@WAYLAND_VERSION_MICRO@",
     };
     var index: usize = 0;
     while (tokit.next()) |*token| {
-        wayland_version_h = try std.mem.replaceOwned(u8, builder.allocator, wayland_version_h, match[index], token.*);
+        wayland_version_h = try std.mem.replaceOwned(u8, toolbox.instance().getBuilder().allocator, wayland_version_h, match[index], token.*);
         index += 1;
     }
 
-    try toolbox.write(path.getWayland(), "wayland-version.h", wayland_version_h);
+    try toolbox.instance().write(path.getWayland(), "wayland-version.h", wayland_version_h);
 
-    try toolbox.run(builder, .{
+    try toolbox.instance().run(.{
         .argv = &[_][]const u8{
-            "wayland-scanner",
-            "server-header",
-            xml_path,
-            try std.fs.path.join(builder.allocator, &.{
-                path.getWayland(),
-                "wayland-server-protocol.h",
+            "wayland-scanner", "server-header", xml_path, toolbox.instance().ptrBuilder().pathJoin(&.{
+                path.getWayland(), "wayland-server-protocol.h",
             }),
         },
     });
-    try toolbox.run(builder, .{
+    try toolbox.instance().run(.{
         .argv = &[_][]const u8{
-            "wayland-scanner",
-            "client-header",
-            xml_path,
-            try std.fs.path.join(builder.allocator, &.{
-                path.getWayland(),
-                "wayland-client-protocol.h",
+            "wayland-scanner", "client-header", xml_path, toolbox.instance().ptrBuilder().pathJoin(&.{
+                path.getWayland(), "wayland-client-protocol.h",
             }),
         },
     });
-    try toolbox.run(builder, .{
+    try toolbox.instance().run(.{
         .argv = &[_][]const u8{
-            "wayland-scanner",
-            "private-code",
-            xml_path,
-            try std.fs.path.join(builder.allocator, &.{
-                path.getWayland(),
-                "wayland-client-protocol-code.h",
+            "wayland-scanner", "private-code", xml_path, toolbox.instance().ptrBuilder().pathJoin(&.{
+                path.getWayland(), "wayland-client-protocol-code.h",
             }),
         },
     });
@@ -124,8 +101,8 @@ fn update_wayland(builder: *std.Build, path: *const Paths, dependencies: *const 
     try std.fs.deleteTreeAbsolute(path.getTmp());
 }
 
-fn update_protocols(builder: *std.Build, path: *const Paths, dependencies: *const toolbox.Dependencies) !void {
-    try dependencies.clone(builder, "wayland-protocols", path.getTmp());
+fn update_protocols(path: *const Paths, dependencies: *const toolbox.Dependencies) !void {
+    try dependencies.clone("wayland-protocols", path.getTmp());
 
     for ([_]struct {
         name: []const u8,
@@ -133,90 +110,70 @@ fn update_protocols(builder: *std.Build, path: *const Paths, dependencies: *cons
     }{
         .{
             .name = "xdg-shell",
-            .xml = try std.fs.path.join(builder.allocator, &.{
-                path.getTmp(),
-                "stable",
-                "xdg-shell",
-                "xdg-shell.xml",
+            .xml = toolbox.instance().ptrBuilder().pathJoin(&.{
+                path.getTmp(), "stable", "xdg-shell", "xdg-shell.xml",
             }),
         },
         .{
             .name = "xdg-decoration-unstable-v1",
-            .xml = try std.fs.path.join(builder.allocator, &.{
-                path.getTmp(),                    "unstable", "xdg-decoration",
-                "xdg-decoration-unstable-v1.xml",
+            .xml = toolbox.instance().ptrBuilder().pathJoin(&.{
+                path.getTmp(), "unstable", "xdg-decoration", "xdg-decoration-unstable-v1.xml",
             }),
         },
         .{
             .name = "viewporter",
-            .xml = try std.fs.path.join(builder.allocator, &.{
-                path.getTmp(),
-                "stable",
-                "viewporter",
-                "viewporter.xml",
+            .xml = toolbox.instance().ptrBuilder().pathJoin(&.{
+                path.getTmp(), "stable", "viewporter", "viewporter.xml",
             }),
         },
         .{
             .name = "relative-pointer-unstable-v1",
-            .xml = try std.fs.path.join(builder.allocator, &.{
-                path.getTmp(),                      "unstable", "relative-pointer",
-                "relative-pointer-unstable-v1.xml",
+            .xml = toolbox.instance().ptrBuilder().pathJoin(&.{
+                path.getTmp(), "unstable", "relative-pointer", "relative-pointer-unstable-v1.xml",
             }),
         },
         .{
             .name = "pointer-constraints-unstable-v1",
-            .xml = try std.fs.path.join(builder.allocator, &.{
-                path.getTmp(),         "unstable",
-                "pointer-constraints", "pointer-constraints-unstable-v1.xml",
+            .xml = toolbox.instance().ptrBuilder().pathJoin(&.{
+                path.getTmp(), "unstable", "pointer-constraints", "pointer-constraints-unstable-v1.xml",
             }),
         },
         .{
             .name = "fractional-scale-v1",
-            .xml = try std.fs.path.join(builder.allocator, &.{
-                path.getTmp(),             "staging", "fractional-scale",
-                "fractional-scale-v1.xml",
+            .xml = toolbox.instance().ptrBuilder().pathJoin(&.{
+                path.getTmp(), "staging", "fractional-scale", "fractional-scale-v1.xml",
             }),
         },
         .{
             .name = "xdg-activation-v1",
-            .xml = try std.fs.path.join(builder.allocator, &.{
-                path.getTmp(),           "staging", "xdg-activation",
-                "xdg-activation-v1.xml",
+            .xml = toolbox.instance().ptrBuilder().pathJoin(&.{
+                path.getTmp(), "staging", "xdg-activation", "xdg-activation-v1.xml",
             }),
         },
         .{
             .name = "idle-inhibit-unstable-v1",
-            .xml = try std.fs.path.join(builder.allocator, &.{
-                path.getTmp(),                  "unstable", "idle-inhibit",
-                "idle-inhibit-unstable-v1.xml",
+            .xml = toolbox.instance().ptrBuilder().pathJoin(&.{
+                path.getTmp(), "unstable", "idle-inhibit", "idle-inhibit-unstable-v1.xml",
             }),
         },
     }) |gen| {
-        const protocol_h = builder.fmt("{s}-client-protocol.h", .{
+        const protocol_h = toolbox.instance().ptrBuilder().fmt("{s}-client-protocol.h", .{
             gen.name,
         });
-        const protocol_code_h = builder.fmt("{s}-client-protocol-code.h", .{
+        const protocol_code_h = toolbox.instance().ptrBuilder().fmt("{s}-client-protocol-code.h", .{
             gen.name,
         });
-        try toolbox.run(builder, .{
+        try toolbox.instance().run(.{
             .argv = &[_][]const u8{
-                "wayland-scanner",
-                "client-header",
-                gen.xml,
-                try std.fs.path.join(builder.allocator, &.{
-                    path.getWayland(),
-                    protocol_h,
+                "wayland-scanner", "client-header", gen.xml, toolbox.instance().ptrBuilder().pathJoin(&.{
+                    path.getWayland(), protocol_h,
                 }),
             },
         });
-        try toolbox.run(builder, .{
+        try toolbox.instance().run(.{
             .argv = &[_][]const u8{
-                "wayland-scanner",
-                "private-code",
-                gen.xml,
-                try std.fs.path.join(builder.allocator, &.{
-                    path.getWayland(),
-                    protocol_code_h,
+                "wayland-scanner", "private-code", gen.xml, toolbox.instance().ptrBuilder().pathJoin(&.{
+                    path.getWayland(), protocol_code_h,
                 }),
             },
         });
@@ -225,21 +182,20 @@ fn update_protocols(builder: *std.Build, path: *const Paths, dependencies: *cons
     try std.fs.deleteTreeAbsolute(path.getTmp());
 }
 
-fn update(builder: *std.Build, dependencies: *const toolbox.Dependencies) !void {
-    const path = try Paths.init(builder);
+fn update(dependencies: *const toolbox.Dependencies) !void {
+    const path = try Paths.init();
 
-    std.fs.deleteTreeAbsolute(path.getWayland()) catch |err|
-        {
-            switch (err) {
-                error.FileNotFound => {},
-                else => return err,
-            }
-        };
+    std.fs.deleteTreeAbsolute(path.getWayland()) catch |err| {
+        switch (err) {
+            error.FileNotFound => {},
+            else => return err,
+        }
+    };
 
-    try update_wayland(builder, &path, dependencies);
-    try update_protocols(builder, &path, dependencies);
+    try update_wayland(&path, dependencies);
+    try update_protocols(&path, dependencies);
 
-    try toolbox.clean(builder, &.{
+    try toolbox.instance().clean(&.{
         "wayland",
     }, &.{});
 }
@@ -248,7 +204,9 @@ pub fn build(builder: *std.Build) !void {
     const target = builder.standardTargetOptions(.{});
     const optimize = builder.standardOptimizeOption(.{});
 
-    const dependencies = try toolbox.Dependencies.init(builder, .wayland_zig, "0x879377398f3e6626", &.{
+    toolbox.init(builder, optimize);
+    defer toolbox.deinit();
+    const dependencies = try toolbox.Dependencies.init(.wayland_zig, "0x879377398f3e6626", &.{
         "wayland",
     }, .{
         .toolbox = .{
@@ -271,21 +229,22 @@ pub fn build(builder: *std.Build) !void {
         },
     });
 
-    if (builder.option(bool, "update", "Update binding") orelse false)
-        try update(builder, &dependencies);
+    if (toolbox.instance().ptrBuilder().option(bool, "update", "Update binding") orelse false) {
+        try update(&dependencies);
+    }
 
-    const lib = builder.addStaticLibrary(.{
+    const lib = toolbox.instance().ptrBuilder().addStaticLibrary(.{
         .name = "wayland",
-        .root_source_file = builder.addWriteFiles().add("empty.c", ""),
+        .root_source_file = toolbox.instance().ptrBuilder().addWriteFiles().add("empty.c", ""),
         .target = target,
         .optimize = optimize,
     });
 
-    toolbox.addHeader(lib, try builder.build_root.join(builder.allocator, &.{
+    toolbox.instance().addHeader(lib, try toolbox.instance().getBuilder().build_root.join(toolbox.instance().getBuilder().allocator, &.{
         "wayland",
     }), ".", &.{
         ".h",
     });
 
-    builder.installArtifact(lib);
+    toolbox.instance().ptrBuilder().installArtifact(lib);
 }
