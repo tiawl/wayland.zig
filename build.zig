@@ -27,7 +27,7 @@ const Paths = struct {
     }
 };
 
-fn update_wayland(path: *const Paths, dependencies: *const toolbox.Dependencies) !void {
+fn update_wayland(path: *const Paths) !void {
     const tmp_src_path = toolbox.instance().ptrBuilder().pathJoin(&.{
         path.getTmp(), "src",
     });
@@ -37,7 +37,7 @@ fn update_wayland(path: *const Paths, dependencies: *const toolbox.Dependencies)
 
     try toolbox.instance().make(path.getWayland());
 
-    try dependencies.clone("wayland", path.getTmp());
+    try toolbox.instance().clone("wayland", path.getTmp());
 
     var tmp_dir = try std.fs.openDirAbsolute(tmp_src_path, .{
         .iterate = true,
@@ -101,8 +101,8 @@ fn update_wayland(path: *const Paths, dependencies: *const toolbox.Dependencies)
     try std.fs.deleteTreeAbsolute(path.getTmp());
 }
 
-fn update_protocols(path: *const Paths, dependencies: *const toolbox.Dependencies) !void {
-    try dependencies.clone("wayland-protocols", path.getTmp());
+fn update_protocols(path: *const Paths) !void {
+    try toolbox.instance().clone("wayland-protocols", path.getTmp());
 
     for ([_]struct {
         name: []const u8,
@@ -182,7 +182,7 @@ fn update_protocols(path: *const Paths, dependencies: *const toolbox.Dependencie
     try std.fs.deleteTreeAbsolute(path.getTmp());
 }
 
-fn update(dependencies: *const toolbox.Dependencies) !void {
+fn update() !void {
     const path = try Paths.init();
 
     std.fs.deleteTreeAbsolute(path.getWayland()) catch |err| {
@@ -192,46 +192,51 @@ fn update(dependencies: *const toolbox.Dependencies) !void {
         }
     };
 
-    try update_wayland(&path, dependencies);
-    try update_protocols(&path, dependencies);
+    try update_wayland(&path);
+    try update_protocols(&path);
 
     try toolbox.instance().clean(&.{
         "wayland",
     }, &.{});
 }
 
+const FromZon = toolbox.Repositories(.{
+    .toolbox,
+});
+
+const DuringExec = toolbox.Repositories(.{
+    .wayland, .@"wayland-protocols",
+});
+
 pub fn build(builder: *std.Build) !void {
     const target = builder.standardTargetOptions(.{});
     const optimize = builder.standardOptimizeOption(.{});
 
-    toolbox.init(builder, optimize);
-    defer toolbox.deinit();
-    const dependencies = try toolbox.Dependencies.init(.wayland_zig, "0x879377398f3e6626", &.{
+    try toolbox.init(FromZon, DuringExec, builder, optimize, .wayland_zig, "0x879377398f3e6626", &.{
         "wayland",
     }, .{
         .toolbox = .{
             .name = "tiawl/toolbox",
-            .host = toolbox.Repository.Host.github,
-            .ref = toolbox.Repository.Reference.tag,
+            .host = .github,
+            .ref = .tag,
         },
     }, .{
         .wayland = .{
             .name = "wayland/wayland",
             .domain = "freedesktop.org",
-            .host = toolbox.Repository.Host.gitlab,
-            .ref = toolbox.Repository.Reference.tag,
+            .host = .gitlab,
+            .ref = .tag,
         },
         .@"wayland-protocols" = .{
             .name = "wayland/wayland-protocols",
             .domain = "freedesktop.org",
-            .host = toolbox.Repository.Host.gitlab,
-            .ref = toolbox.Repository.Reference.tag,
+            .host = .gitlab,
+            .ref = .tag,
         },
     });
+    defer toolbox.deinit();
 
-    if (toolbox.instance().ptrBuilder().option(bool, "update", "Update binding") orelse false) {
-        try update(&dependencies);
-    }
+    if (toolbox.instance().getUpdate()) try update();
 
     const lib = toolbox.instance().ptrBuilder().addStaticLibrary(.{
         .name = "wayland",
