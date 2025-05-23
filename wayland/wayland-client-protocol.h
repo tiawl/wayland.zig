@@ -36,6 +36,7 @@ extern "C" {
  * - @subpage page_iface_wl_region - region interface
  * - @subpage page_iface_wl_subcompositor - sub-surface compositing
  * - @subpage page_iface_wl_subsurface - sub-surface interface to a wl_surface
+ * - @subpage page_iface_wl_fixes - wayland protocol fixes
  * @section page_copyright_wayland Copyright
  * <pre>
  *
@@ -73,6 +74,7 @@ struct wl_data_device_manager;
 struct wl_data_offer;
 struct wl_data_source;
 struct wl_display;
+struct wl_fixes;
 struct wl_keyboard;
 struct wl_output;
 struct wl_pointer;
@@ -939,6 +941,25 @@ extern const struct wl_interface wl_subcompositor_interface;
  * instead to move the sub-surface.
  */
 extern const struct wl_interface wl_subsurface_interface;
+#endif
+#ifndef WL_FIXES_INTERFACE
+#define WL_FIXES_INTERFACE
+/**
+ * @page page_iface_wl_fixes wl_fixes
+ * @section page_iface_wl_fixes_desc Description
+ *
+ * This global fixes problems with other core-protocol interfaces that
+ * cannot be fixed in these interfaces themselves.
+ * @section page_iface_wl_fixes_api API
+ * See @ref iface_wl_fixes.
+ */
+/**
+ * @defgroup iface_wl_fixes The wl_fixes interface
+ *
+ * This global fixes problems with other core-protocol interfaces that
+ * cannot be fixed in these interfaces themselves.
+ */
+extern const struct wl_interface wl_fixes_interface;
 #endif
 
 #ifndef WL_DISPLAY_ERROR_ENUM
@@ -2076,8 +2097,10 @@ struct wl_buffer_listener {
 	 * compositor releases buffer
 	 *
 	 * Sent when this wl_buffer is no longer used by the compositor.
-	 * The client is now free to reuse or destroy this buffer and its
-	 * backing storage.
+	 *
+	 * For more information on when release events may or may not be
+	 * sent, and what consequences it has, please see the description
+	 * of wl_surface.attach.
 	 *
 	 * If a client receives a release event before the frame callback
 	 * requested in the same wl_surface.commit that attaches this
@@ -3915,7 +3938,8 @@ wl_surface_destroy(struct wl_surface *wl_surface)
  * the delivery of wl_buffer.release events becomes undefined. A well
  * behaved client should not rely on wl_buffer.release events in this
  * case. Alternatively, a client could create multiple wl_buffer objects
- * from the same backing storage or use wp_linux_buffer_release.
+ * from the same backing storage or use a protocol extension providing
+ * per-commit release notifications.
  *
  * Destroying the wl_buffer after wl_buffer.release does not change
  * the surface contents. Destroying the wl_buffer before wl_buffer.release
@@ -4247,6 +4271,9 @@ wl_surface_damage_buffer(struct wl_surface *wl_surface, int32_t x, int32_t y, in
  * x and y, combined with the new surface size define in which
  * directions the surface's size changes.
  *
+ * The exact semantics of wl_surface.offset are role-specific. Refer to
+ * the documentation of specific roles for more information.
+ *
  * Surface location offset is double-buffered state, see
  * wl_surface.commit.
  *
@@ -4310,9 +4337,10 @@ struct wl_seat_listener {
 	/**
 	 * seat capabilities changed
 	 *
-	 * This is emitted whenever a seat gains or loses the pointer,
-	 * keyboard or touch capabilities. The argument is a capability
-	 * enum containing the complete set of capabilities this seat has.
+	 * This is sent on binding to the seat global or whenever a seat
+	 * gains or loses the pointer, keyboard or touch capabilities. The
+	 * argument is a capability enum containing the complete set of
+	 * capabilities this seat has.
 	 *
 	 * When the pointer capability is added, a client may create a
 	 * wl_pointer object using the wl_seat.get_pointer request. This
@@ -4356,9 +4384,10 @@ struct wl_seat_listener {
 	 * be shared across processes to refer to a specific wl_seat
 	 * global.
 	 *
-	 * The name event is sent after binding to the seat global. This
-	 * event is only sent once per seat object, and the name does not
-	 * change over the lifetime of the wl_seat global.
+	 * The name event is sent after binding to the seat global, and
+	 * should be sent before announcing capabilities. This event only
+	 * sent once per seat object, and the name does not change over the
+	 * lifetime of the wl_seat global.
 	 *
 	 * Compositors may re-use the same seat name if the wl_seat global
 	 * is destroyed and re-created later.
@@ -5156,6 +5185,14 @@ enum wl_keyboard_keymap_format {
  * physical key state
  *
  * Describes the physical state of a key that produced the key event.
+ *
+ * Since version 10, the key can be in a "repeated" pseudo-state which
+ * means the same as "pressed", but is used to signal repetition in the
+ * key event.
+ *
+ * The key may only enter the repeated state after entering the pressed
+ * state and before entering the released state. This event may be
+ * generated multiple times while the key is down.
  */
 enum wl_keyboard_key_state {
 	/**
@@ -5166,7 +5203,16 @@ enum wl_keyboard_key_state {
 	 * key is pressed
 	 */
 	WL_KEYBOARD_KEY_STATE_PRESSED = 1,
+	/**
+	 * key was repeated
+	 * @since 10
+	 */
+	WL_KEYBOARD_KEY_STATE_REPEATED = 2,
 };
+/**
+ * @ingroup iface_wl_keyboard
+ */
+#define WL_KEYBOARD_KEY_STATE_REPEATED_SINCE_VERSION 10
 #endif /* WL_KEYBOARD_KEY_STATE_ENUM */
 
 /**
@@ -5206,6 +5252,9 @@ struct wl_keyboard_listener {
 	 * down to the keys in the keys argument. The compositor must not
 	 * send this event if the wl_keyboard already had an active surface
 	 * immediately before this event.
+	 *
+	 * Clients should not use the list of pressed keys to emulate
+	 * key-press events. The order of keys in the list is unspecified.
 	 * @param serial serial number of the enter event
 	 * @param surface surface gaining keyboard focus
 	 * @param keys the keys currently logically down
@@ -5256,6 +5305,11 @@ struct wl_keyboard_listener {
 	 * event if state is pressed (resp. released) and the key was
 	 * already logically down (resp. was not logically down)
 	 * immediately before this event.
+	 *
+	 * Since version 10, compositors may send key events with the
+	 * "repeated" key state when a wl_keyboard.repeat_info event with a
+	 * rate argument of 0 has been received. This allows the compositor
+	 * to take over the responsibility of key repetition.
 	 * @param serial serial number of the key event
 	 * @param time timestamp with millisecond granularity
 	 * @param key key that produced the event
@@ -6400,6 +6454,69 @@ wl_subsurface_set_desync(struct wl_subsurface *wl_subsurface)
 {
 	wl_proxy_marshal_flags((struct wl_proxy *) wl_subsurface,
 			 WL_SUBSURFACE_SET_DESYNC, NULL, wl_proxy_get_version((struct wl_proxy *) wl_subsurface), 0);
+}
+
+#define WL_FIXES_DESTROY 0
+#define WL_FIXES_DESTROY_REGISTRY 1
+
+
+/**
+ * @ingroup iface_wl_fixes
+ */
+#define WL_FIXES_DESTROY_SINCE_VERSION 1
+/**
+ * @ingroup iface_wl_fixes
+ */
+#define WL_FIXES_DESTROY_REGISTRY_SINCE_VERSION 1
+
+/** @ingroup iface_wl_fixes */
+static inline void
+wl_fixes_set_user_data(struct wl_fixes *wl_fixes, void *user_data)
+{
+	wl_proxy_set_user_data((struct wl_proxy *) wl_fixes, user_data);
+}
+
+/** @ingroup iface_wl_fixes */
+static inline void *
+wl_fixes_get_user_data(struct wl_fixes *wl_fixes)
+{
+	return wl_proxy_get_user_data((struct wl_proxy *) wl_fixes);
+}
+
+static inline uint32_t
+wl_fixes_get_version(struct wl_fixes *wl_fixes)
+{
+	return wl_proxy_get_version((struct wl_proxy *) wl_fixes);
+}
+
+/**
+ * @ingroup iface_wl_fixes
+ */
+static inline void
+wl_fixes_destroy(struct wl_fixes *wl_fixes)
+{
+	wl_proxy_marshal_flags((struct wl_proxy *) wl_fixes,
+			 WL_FIXES_DESTROY, NULL, wl_proxy_get_version((struct wl_proxy *) wl_fixes), WL_MARSHAL_FLAG_DESTROY);
+}
+
+/**
+ * @ingroup iface_wl_fixes
+ *
+ * This request destroys a wl_registry object.
+ *
+ * The client should no longer use the wl_registry after making this
+ * request.
+ *
+ * The compositor will emit a wl_display.delete_id event with the object ID
+ * of the registry and will no longer emit any events on the registry. The
+ * client should re-use the object ID once it receives the
+ * wl_display.delete_id event.
+ */
+static inline void
+wl_fixes_destroy_registry(struct wl_fixes *wl_fixes, struct wl_registry *registry)
+{
+	wl_proxy_marshal_flags((struct wl_proxy *) wl_fixes,
+			 WL_FIXES_DESTROY_REGISTRY, NULL, wl_proxy_get_version((struct wl_proxy *) wl_fixes), 0, registry);
 }
 
 #ifdef  __cplusplus

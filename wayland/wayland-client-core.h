@@ -34,6 +34,8 @@
 extern "C" {
 #endif
 
+struct timespec;
+
 /** \class wl_proxy
  *
  * \brief Represents a protocol object on the client side.
@@ -219,6 +221,9 @@ wl_proxy_get_tag(struct wl_proxy *proxy);
 const char *
 wl_proxy_get_class(struct wl_proxy *proxy);
 
+const struct wl_interface *
+wl_proxy_get_interface(struct wl_proxy *proxy);
+
 struct wl_display *
 wl_proxy_get_display(struct wl_proxy *proxy);
 
@@ -249,6 +254,15 @@ wl_display_dispatch(struct wl_display *display);
 int
 wl_display_dispatch_queue(struct wl_display *display,
 			  struct wl_event_queue *queue);
+
+int
+wl_display_dispatch_timeout(struct wl_display *display,
+			    const struct timespec *timeout);
+
+int
+wl_display_dispatch_queue_timeout(struct wl_display *display,
+				  struct wl_event_queue *queue,
+				  const struct timespec *timeout);
 
 int
 wl_display_dispatch_queue_pending(struct wl_display *display,
