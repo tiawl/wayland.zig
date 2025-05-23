@@ -39,6 +39,7 @@ struct wl_resource;
  * - @subpage page_iface_wl_region - region interface
  * - @subpage page_iface_wl_subcompositor - sub-surface compositing
  * - @subpage page_iface_wl_subsurface - sub-surface interface to a wl_surface
+ * - @subpage page_iface_wl_fixes - wayland protocol fixes
  * @section page_copyright_wayland Copyright
  * <pre>
  *
@@ -76,6 +77,7 @@ struct wl_data_device_manager;
 struct wl_data_offer;
 struct wl_data_source;
 struct wl_display;
+struct wl_fixes;
 struct wl_keyboard;
 struct wl_output;
 struct wl_pointer;
@@ -942,6 +944,25 @@ extern const struct wl_interface wl_subcompositor_interface;
  * instead to move the sub-surface.
  */
 extern const struct wl_interface wl_subsurface_interface;
+#endif
+#ifndef WL_FIXES_INTERFACE
+#define WL_FIXES_INTERFACE
+/**
+ * @page page_iface_wl_fixes wl_fixes
+ * @section page_iface_wl_fixes_desc Description
+ *
+ * This global fixes problems with other core-protocol interfaces that
+ * cannot be fixed in these interfaces themselves.
+ * @section page_iface_wl_fixes_api API
+ * See @ref iface_wl_fixes.
+ */
+/**
+ * @defgroup iface_wl_fixes The wl_fixes interface
+ *
+ * This global fixes problems with other core-protocol interfaces that
+ * cannot be fixed in these interfaces themselves.
+ */
+extern const struct wl_interface wl_fixes_interface;
 #endif
 
 #ifndef WL_DISPLAY_ERROR_ENUM
@@ -3080,7 +3101,8 @@ struct wl_surface_interface {
 	 * undefined. A well behaved client should not rely on
 	 * wl_buffer.release events in this case. Alternatively, a client
 	 * could create multiple wl_buffer objects from the same backing
-	 * storage or use wp_linux_buffer_release.
+	 * storage or use a protocol extension providing per-commit release
+	 * notifications.
 	 *
 	 * Destroying the wl_buffer after wl_buffer.release does not change
 	 * the surface contents. Destroying the wl_buffer before
@@ -3416,6 +3438,10 @@ struct wl_surface_interface {
 	 * upper left corner, in surface-local coordinates. In other words,
 	 * the x and y, combined with the new surface size define in which
 	 * directions the surface's size changes.
+	 *
+	 * The exact semantics of wl_surface.offset are role-specific.
+	 * Refer to the documentation of specific roles for more
+	 * information.
 	 *
 	 * Surface location offset is double-buffered state, see
 	 * wl_surface.commit.
@@ -4132,6 +4158,14 @@ enum wl_keyboard_keymap_format {
  * physical key state
  *
  * Describes the physical state of a key that produced the key event.
+ *
+ * Since version 10, the key can be in a "repeated" pseudo-state which
+ * means the same as "pressed", but is used to signal repetition in the
+ * key event.
+ *
+ * The key may only enter the repeated state after entering the pressed
+ * state and before entering the released state. This event may be
+ * generated multiple times while the key is down.
  */
 enum wl_keyboard_key_state {
 	/**
@@ -4142,7 +4176,16 @@ enum wl_keyboard_key_state {
 	 * key is pressed
 	 */
 	WL_KEYBOARD_KEY_STATE_PRESSED = 1,
+	/**
+	 * key was repeated
+	 * @since 10
+	 */
+	WL_KEYBOARD_KEY_STATE_REPEATED = 2,
 };
+/**
+ * @ingroup iface_wl_keyboard
+ */
+#define WL_KEYBOARD_KEY_STATE_REPEATED_SINCE_VERSION 10
 #endif /* WL_KEYBOARD_KEY_STATE_ENUM */
 
 /**
@@ -4963,6 +5006,47 @@ struct wl_subsurface_interface {
  * @ingroup iface_wl_subsurface
  */
 #define WL_SUBSURFACE_SET_DESYNC_SINCE_VERSION 1
+
+/**
+ * @ingroup iface_wl_fixes
+ * @struct wl_fixes_interface
+ */
+struct wl_fixes_interface {
+	/**
+	 * destroys this object
+	 *
+	 * 
+	 */
+	void (*destroy)(struct wl_client *client,
+			struct wl_resource *resource);
+	/**
+	 * destroy a wl_registry
+	 *
+	 * This request destroys a wl_registry object.
+	 *
+	 * The client should no longer use the wl_registry after making
+	 * this request.
+	 *
+	 * The compositor will emit a wl_display.delete_id event with the
+	 * object ID of the registry and will no longer emit any events on
+	 * the registry. The client should re-use the object ID once it
+	 * receives the wl_display.delete_id event.
+	 * @param registry the registry to destroy
+	 */
+	void (*destroy_registry)(struct wl_client *client,
+				 struct wl_resource *resource,
+				 struct wl_resource *registry);
+};
+
+
+/**
+ * @ingroup iface_wl_fixes
+ */
+#define WL_FIXES_DESTROY_SINCE_VERSION 1
+/**
+ * @ingroup iface_wl_fixes
+ */
+#define WL_FIXES_DESTROY_REGISTRY_SINCE_VERSION 1
 
 #ifdef  __cplusplus
 }
