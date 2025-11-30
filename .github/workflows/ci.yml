@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
-    - uses: mlugg/setup-zig@v2
+    - uses: mlugg/setup-zig@v2.0.5
     - name: Check zig is canonical
       shell: bash
       run: |
@@ -22,8 +22,6 @@ jobs:
           - glfw
     runs-on: ubuntu-latest
     steps:
-    - name: Setup Zig
-      uses: mlugg/setup-zig@v2
     - name: Install apt packages
       shell: bash
       run: |
@@ -32,6 +30,9 @@ jobs:
     - uses: actions/checkout@v4
       with:
         repository: "${{ github.repository_owner }}/${{ matrix.repo }}.zig"
+
+    - name: Setup Zig
+      uses: mlugg/setup-zig@v2.0.5
 
     - name: Prepare ${{ matrix.repo }}.zig/build.zig.zon
       env:
