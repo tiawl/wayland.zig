@@ -40,13 +40,13 @@ fn update_wayland(toolbox: *Toolbox, path: *const Paths) !void {
 
     try toolbox.clone(.wayland, path.getTmp());
 
-    var tmp_dir = try std.fs.openDirAbsolute(tmp_src_path, .{
+    var tmp_dir = try std.Io.Dir.openDirAbsolute(toolbox.getIo(), tmp_src_path, .{
         .iterate = true,
     });
-    defer tmp_dir.close();
+    defer tmp_dir.close(toolbox.getIo());
 
     var it = tmp_dir.iterate();
-    while (try it.next()) |*entry| {
+    while (try it.next(toolbox.getIo())) |*entry| {
         if ((std.mem.startsWith(u8, entry.name, "wayland-client") or
             std.mem.startsWith(u8, entry.name, "wayland-server") or
             std.mem.startsWith(u8, entry.name, "wayland-util")) and
@@ -62,7 +62,7 @@ fn update_wayland(toolbox: *Toolbox, path: *const Paths) !void {
     }
 
     const wayland_version = try toolbox.reference(.wayland);
-    var wayland_version_h = try tmp_dir.readFileAlloc(toolbox.getAllocator(), "wayland-version.h.in", std.math.maxInt(usize));
+    var wayland_version_h = try tmp_dir.readFileAlloc(toolbox.getIo(), "wayland-version.h.in", toolbox.getAllocator(), .unlimited);
     wayland_version_h = try std.mem.replaceOwned(u8, toolbox.getAllocator(), wayland_version_h, "@WAYLAND_VERSION@", wayland_version);
 
     var tokit = std.mem.tokenizeScalar(u8, wayland_version, '.');
@@ -99,7 +99,8 @@ fn update_wayland(toolbox: *Toolbox, path: *const Paths) !void {
         },
     });
 
-    try std.fs.deleteTreeAbsolute(path.getTmp());
+    std.debug.assert(std.fs.path.isAbsolute(path.getTmp()));
+    try std.Io.Dir.deleteTree(.cwd(), toolbox.getIo(), path.getTmp());
 }
 
 fn update_protocols(toolbox: *Toolbox, path: *const Paths) !void {
@@ -180,18 +181,21 @@ fn update_protocols(toolbox: *Toolbox, path: *const Paths) !void {
         });
     }
 
-    try std.fs.deleteTreeAbsolute(path.getTmp());
+    std.debug.assert(std.fs.path.isAbsolute(path.getTmp()));
+    try std.Io.Dir.deleteTree(.cwd(), toolbox.getIo(), path.getTmp());
 }
 
 fn update(toolbox: *Toolbox) !void {
     const path = try Paths.init(toolbox);
 
-    std.fs.deleteTreeAbsolute(path.getWayland()) catch |err| {
-        switch (err) {
-            error.FileNotFound => {},
-            else => return err,
-        }
-    };
+    // there is no FileNotFound in DeleteTreeError in 0.16
+    std.debug.assert(std.fs.path.isAbsolute(path.getWayland()));
+    try std.Io.Dir.deleteTree(.cwd(), toolbox.getIo(), path.getWayland()); // catch |err| {
+    //     switch (err) {
+    //         error.FileNotFound => {},
+    //         else => return err,
+    //     }
+    // };
 
     try update_wayland(toolbox, &path);
     try update_protocols(toolbox, &path);
