@@ -16,7 +16,7 @@ fn update_wayland(pkg_builder: *VerboseBuilder) !void {
                     !std.mem.endsWith(u8, entry.name, "private.h") and
                     toolbox.isCHeader(entry.name))
                 {
-                    try pkg_builder.copy(&.{ "wayland", entry.name }, &wayland_builder, &.{entry.name});
+                    try pkg_builder.copy(&.{ "wayland", entry.name }, &wayland_builder, &.{ "src", entry.name });
                 }
             },
             else => {},
