@@ -4,7 +4,7 @@ const toolbox = @import("toolbox");
 const VerboseBuilder = toolbox.VerboseBuilder;
 
 fn update_wayland(pkg_builder: *VerboseBuilder) !void {
-    const wayland_dep = pkg_builder.dependency("wayland");
+    const wayland_dep = pkg_builder.verboseDependency("wayland");
     var wayland_builder = VerboseBuilder.initFromDependency(wayland_dep);
 
     while (try wayland_builder.iterate(&.{"src"})) |entry| {
@@ -14,7 +14,7 @@ fn update_wayland(pkg_builder: *VerboseBuilder) !void {
                     std.mem.startsWith(u8, entry.name, "wayland-server") or
                     std.mem.startsWith(u8, entry.name, "wayland-util")) and
                     !std.mem.endsWith(u8, entry.name, "private.h") and
-                    toolbox.isCHeader(entry.name))
+                    toolbox.isCHeader(entry.name) or toolbox.isCTemplate(entry.name))
                 {
                     try pkg_builder.copy(&.{ "wayland", entry.name }, &wayland_builder, &.{ "src", entry.name });
                 }
@@ -22,23 +22,6 @@ fn update_wayland(pkg_builder: *VerboseBuilder) !void {
             else => {},
         }
     }
-
-    var wayland_version_h = try wayland_builder.readFile(&.{ "src", "wayland-version.h.in" });
-
-    const uri = try std.Uri.parse(build_zig_zon.dependencies.wayland.url);
-    const wayland_version = pkg_builder.uriComponent(&uri.query.?)[4..];
-
-    wayland_version_h = pkg_builder.replace(wayland_version_h, "@WAYLAND_VERSION@", wayland_version);
-
-    var it = std.mem.tokenizeScalar(u8, wayland_version, '.');
-    var token = it.next().?;
-    wayland_version_h = pkg_builder.replace(wayland_version_h, "@WAYLAND_VERSION_MAJOR@", token);
-    token = it.next().?;
-    wayland_version_h = pkg_builder.replace(wayland_version_h, "@WAYLAND_VERSION_MINOR@", token);
-    token = it.next().?;
-    wayland_version_h = pkg_builder.replace(wayland_version_h, "@WAYLAND_VERSION_MICRO@", token);
-
-    try pkg_builder.writeFile(&.{ "wayland", "wayland-version.h" }, wayland_version_h);
 
     _ = try wayland_builder.run(&.{ "wayland-scanner", "server-header", pkg_builder.resolve(&.{ "protocol", "wayland.xml" }), "wayland-server-protocol.h" }, wayland_builder.ptrCwd().*);
     try pkg_builder.copy(&.{ "wayland", "wayland-server-protocol.h" }, &wayland_builder, &.{"wayland-server-protocol.h"});
@@ -85,7 +68,21 @@ fn updateFn(pkg_builder: *VerboseBuilder) !void {
 fn buildFn(pkg_builder: *VerboseBuilder) !void {
     const lib = pkg_builder.addLibrary("wayland");
 
-    pkg_builder.installHeaders(lib, &.{"wayland"}, ".", &toolbox.ext.c.header);
+
+    while (try pkg_builder.walk(&.{ "wayland" })) |*entry| {
+        if (toolbox.isCHeader(entry.basename)) pkg_builder.installHeader(lib, &.{"wayland", entry.path }, &.{entry.path});
+    }
+    const uri = try std.Uri.parse(build_zig_zon.dependencies.wayland.url);
+    const wayland_version = pkg_builder.uriComponent(&uri.query.?)[4..];
+    const wayland_version_sem = std.SemanticVersion.parse(wayland_version) catch unreachable;
+
+    pkg_builder.addConfigHeader(lib, &.{ "wayland", "wayland-version.h.in" }, .autoconf_at, .{
+        .WAYLAND_VERSION = wayland_version,
+        .WAYLAND_VERSION_MAJOR = @as(i64, @intCast(wayland_version_sem.major)),
+        .WAYLAND_VERSION_MINOR = @as(i64, @intCast(wayland_version_sem.minor)),
+        .WAYLAND_VERSION_MICRO = @as(i64, @intCast(wayland_version_sem.patch)),
+    });
+
 
     pkg_builder.installArtifact(lib);
 }
