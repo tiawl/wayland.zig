@@ -3,7 +3,7 @@ const build_zig_zon = @import("build.zig.zon");
 const toolbox = @import("toolbox");
 const VerboseBuilder = toolbox.VerboseBuilder;
 
-fn update_wayland(pkg_builder: *VerboseBuilder) !void {
+fn updateWayland(pkg_builder: *VerboseBuilder) !void {
     const wayland_dep = pkg_builder.verboseDependency("wayland");
     var wayland_builder = VerboseBuilder.initFromDependency(wayland_dep);
 
@@ -31,7 +31,7 @@ fn update_wayland(pkg_builder: *VerboseBuilder) !void {
     try pkg_builder.copy(&.{ "wayland", "wayland-client-protocol-code.h" }, &wayland_builder, &.{"wayland-client-protocol-code.h"});
 }
 
-fn update_protocols(pkg_builder: *VerboseBuilder) !void {
+fn updateWaylandProtocols(pkg_builder: *VerboseBuilder) !void {
     const wayland_protocols_dep = pkg_builder.dependency("wayland-protocols");
     var wayland_protocols_builder = VerboseBuilder.initFromDependency(wayland_protocols_dep);
 
@@ -61,16 +61,15 @@ fn updateFn(pkg_builder: *VerboseBuilder) !void {
     try pkg_builder.remove(&.{"wayland"});
     try pkg_builder.make(&.{"wayland"});
 
-    try update_wayland(pkg_builder);
-    try update_protocols(pkg_builder);
+    try updateWayland(pkg_builder);
+    try updateWaylandProtocols(pkg_builder);
 }
 
 fn buildFn(pkg_builder: *VerboseBuilder) !void {
     const lib = pkg_builder.addLibrary("wayland");
 
-
-    while (try pkg_builder.walk(&.{ "wayland" })) |*entry| {
-        if (toolbox.isCHeader(entry.basename)) pkg_builder.installHeader(lib, &.{"wayland", entry.path }, &.{entry.path});
+    while (try pkg_builder.walk(&.{"wayland"})) |*entry| {
+        if (toolbox.isCHeader(entry.basename)) pkg_builder.installHeader(lib, &.{ "wayland", entry.path }, &.{entry.path});
     }
     const uri = try std.Uri.parse(build_zig_zon.dependencies.wayland.url);
     const wayland_version = pkg_builder.uriComponent(&uri.query.?)[4..];
@@ -82,7 +81,6 @@ fn buildFn(pkg_builder: *VerboseBuilder) !void {
         .WAYLAND_VERSION_MINOR = @as(i64, @intCast(wayland_version_sem.minor)),
         .WAYLAND_VERSION_MICRO = @as(i64, @intCast(wayland_version_sem.patch)),
     });
-
 
     pkg_builder.installArtifact(lib);
 }
