@@ -75,7 +75,7 @@ fn buildFn(pkg_builder: *VerboseBuilder) !void {
     const wayland_version = pkg_builder.uriComponent(&uri.query.?)[4..];
     const wayland_version_sem = std.SemanticVersion.parse(wayland_version) catch unreachable;
 
-    pkg_builder.addConfigHeader(lib, &.{ "wayland", "wayland-version.h.in" }, .autoconf_at, .{
+    pkg_builder.addConfigHeader(lib, &.{"wayland"}, &.{"wayland-version.h.in"}, .autoconf_at, .{
         .WAYLAND_VERSION = wayland_version,
         .WAYLAND_VERSION_MAJOR = @as(i64, @intCast(wayland_version_sem.major)),
         .WAYLAND_VERSION_MINOR = @as(i64, @intCast(wayland_version_sem.minor)),
