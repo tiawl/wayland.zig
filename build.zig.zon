@@ -1,6 +1,6 @@
 .{
     .name = .wayland_zig,
-    .version = "1.0.0",
+    .version = "1.0.1",
     .dependencies = .{
         .wayland = .{
             .url = "git+https://gitlab.freedesktop.org/wayland/wayland?ref=1.23.92#53fbc2b0c1dc70b3a96740ab0ceff6a9fe09b940",
@@ -11,11 +11,10 @@
             .hash = "N-V-__8AAFdWDwA0ktbNUi9pFBHCRN4weXIgIfCrVjfGxqgA",
         },
         .toolbox = .{
-            .url = "git+https://github.com/tiawl/toolbox?ref=2.0.0#8cfe99b13c380c0a0437e9edc05ab4b961b242d6",
-            .hash = "toolbox-2.0.0-kRAu4EF8AAC9LKCNAHFDbj1RzTI4yczjgz7PL_9YjYqb",
+            .path = "../toolbox",
         },
     },
-    .minimum_zig_version = "0.15.2",
+    .minimum_zig_version = "0.16.0-dev",
     .fingerprint = 0x879377398f3e6626,
     .paths = .{
         "build.zig",
