@@ -3,16 +3,16 @@
     .version = "1.0.1",
     .dependencies = .{
         .wayland = .{
-            .url = "git+https://gitlab.freedesktop.org/wayland/wayland?ref=1.23.92#53fbc2b0c1dc70b3a96740ab0ceff6a9fe09b940",
-            .hash = "N-V-__8AAGEfGQDRG2Wau-Ek9fGvryocEx-T3cg8cAemCIl7",
+            .url = "git+https://gitlab.freedesktop.org/wayland/wayland?ref=1.24.91#e6aeed9816f9fa202ed49318b7b25f867676999a",
+            .hash = "N-V-__8AAHr0JACeIVK5CkrixKeVluYqJ4OPDz1ss5bvTWd9",
         },
         .@"wayland-protocols" = .{
             .url = "git+https://gitlab.freedesktop.org/wayland/wayland-protocols?ref=1.47#88223018d1b578d0d8869866da66d9608e05f928",
             .hash = "N-V-__8AAFdWDwA0ktbNUi9pFBHCRN4weXIgIfCrVjfGxqgA",
         },
         .toolbox = .{
-            .url = "git+https://github.com/tiawl/toolbox.git?ref=zig-0.16#e3ace01fa3a5885527e193a9f751c150ef2c027f",
-            .hash = "toolbox-2.0.1-kRAu4IaAAADiKSl4-WffNzXtCBRZ7O0-QMvhW7NHQU07",
+            .url = "git+https://github.com/tiawl/toolbox.git?ref=zig-nightly#4aa852b1d56f8a3863e7392e65bf4e64028f8107",
+            .hash = "toolbox-2.0.1-kRAu4DeDAABbwLXRRhOdGDx9cE_4_EEt4mLxqPWwUx0M",
         },
     },
     .minimum_zig_version = "0.16.0-dev",

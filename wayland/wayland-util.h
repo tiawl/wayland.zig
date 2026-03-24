@@ -91,6 +91,14 @@ extern "C" {
 struct wl_object;
 
 /**
+ * The maximum size of a protocol message.
+ *
+ * If a message size exceeds this value, the connection will be dropped.
+ * Servers will send an invalid_method error before disconnecting.
+ */
+#define WL_MAX_MESSAGE_SIZE 4096
+
+/**
  * Protocol message signature
  *
  * A wl_message describes the signature of an actual protocol message, such as a
