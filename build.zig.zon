@@ -4,7 +4,7 @@
     .dependencies = .{
         .wayland = .{
             .url = "git+https://gitlab.freedesktop.org/wayland/wayland?ref=1.24.91#e6aeed9816f9fa202ed49318b7b25f867676999a",
-            .hash = "N-V-__8AAHr0JACeIVK5CkrixKeVluYqJ4OPDz1ss5bvTWd9",
+            .hash = "N-V-__8AAEz1JADNj6oKANmNKajvf6zZZkXQKsB05Px-n9cp",
         },
         .@"wayland-protocols" = .{
             .url = "git+https://gitlab.freedesktop.org/wayland/wayland-protocols?ref=1.47#88223018d1b578d0d8869866da66d9608e05f928",
