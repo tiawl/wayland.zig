@@ -12,8 +12,7 @@ However this repository has subtle differences for maintainability tasks:
 
 ## Dependencies
 
-The [Zig][4] part of this package is relying on the latest [Zig][4] release (0.15.2) and will only be updated for the next one.
-It you use a more recent [Zig][4] version, please consider the `zig-nightly` branch and `*-nightly` tags.
+The [Zig][4] part of this package requires the latest (0.16.0) or the master (0.17.0-dev) [Zig][4] release.
 
 For other dependencies see [the build.zig.zon](https://github.com/tiawl/wayland.zig/blob/zig-stable/build.zig.zon)
 
