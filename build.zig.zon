@@ -21,5 +21,6 @@
         "build.zig",
         "build.zig.zon",
         "wayland",
+        "LICENSE",
     },
 }
