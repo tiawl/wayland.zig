@@ -1062,7 +1062,7 @@ struct wl_registry_interface {
 	 * @param name unique numeric name of the object
 	 * @param interface name of the objects interface
 	 * @param version version of the objects interface
-	 * @param id bounded object
+	 * @param id bound object
 	 */
 	void (*bind)(struct wl_client *client,
 		     struct wl_resource *resource,
@@ -1181,6 +1181,26 @@ struct wl_compositor_interface {
  */
 #define WL_COMPOSITOR_RELEASE_SINCE_VERSION 7
 
+#ifndef WL_SHM_POOL_ERROR_ENUM
+#define WL_SHM_POOL_ERROR_ENUM
+/**
+ * @ingroup iface_wl_shm_pool
+ * wl_shm_pool error values
+ *
+ * These errors can be emitted in response to wl_shm_pool requests.
+ */
+enum wl_shm_pool_error {
+	/**
+	 * buffer format is not known
+	 */
+	WL_SHM_POOL_ERROR_INVALID_FORMAT = 0,
+	/**
+	 * invalid size or stride during buffer creation
+	 */
+	WL_SHM_POOL_ERROR_INVALID_STRIDE = 1,
+};
+#endif /* WL_SHM_POOL_ERROR_ENUM */
+
 /**
  * @ingroup iface_wl_shm_pool
  * @struct wl_shm_pool_interface
@@ -1273,7 +1293,7 @@ enum wl_shm_error {
 	 */
 	WL_SHM_ERROR_INVALID_FORMAT = 0,
 	/**
-	 * invalid size or stride during pool or buffer creation
+	 * invalid size or stride during pool creation
 	 */
 	WL_SHM_ERROR_INVALID_STRIDE = 1,
 	/**
@@ -1349,7 +1369,7 @@ enum wl_shm_format {
 	 */
 	WL_SHM_FORMAT_ABGR4444 = 0x32314241,
 	/**
-	 * 16-bit RBGA format, [15:0] R:G:B:A 4:4:4:4 little endian
+	 * 16-bit RGBA format, [15:0] R:G:B:A 4:4:4:4 little endian
 	 */
 	WL_SHM_FORMAT_RGBA4444 = 0x32314152,
 	/**
@@ -1785,15 +1805,15 @@ enum wl_shm_format {
 	 */
 	WL_SHM_FORMAT_R32F = 0x46202052,
 	/**
-	 * [63:0] R:G 32:32 little endian
+	 * [63:0] G:R 32:32 little endian
 	 */
 	WL_SHM_FORMAT_GR3232F = 0x46205247,
 	/**
-	 * [95:0] R:G:B 32:32:32 little endian
+	 * [95:0] B:G:R 32:32:32 little endian
 	 */
 	WL_SHM_FORMAT_BGR323232F = 0x46524742,
 	/**
-	 * [127:0] R:G:B:A 32:32:32:32 little endian
+	 * [127:0] A:B:G:R 32:32:32:32 little endian
 	 */
 	WL_SHM_FORMAT_ABGR32323232F = 0x46384241,
 	/**
@@ -1840,6 +1860,23 @@ enum wl_shm_format {
 	 * non-subsampled Cb (1) and Cr (2) planes 16 bits per channel
 	 */
 	WL_SHM_FORMAT_S416 = 0x36313453,
+	/**
+	 * [31:0] x:Cr:Cb:Y 2:10:10:10 little endian
+	 */
+	WL_SHM_FORMAT_XVUY2101010 = 0x30335958,
+	/**
+	 * 2x1 subsampled Cr:Cb plane 10 bits per channel packed
+	 */
+	WL_SHM_FORMAT_P230 = 0x30333250,
+	WL_SHM_FORMAT_T430 = 0x30333454,
+	/**
+	 * 8-bit Y-only
+	 */
+	WL_SHM_FORMAT_Y8 = 0x59455247,
+	/**
+	 * [31:0] x:Y2:Y1:Y0 2:10:10:10 little endian
+	 */
+	WL_SHM_FORMAT_XYYY2101010 = 0x34415059,
 };
 #endif /* WL_SHM_FORMAT_ENUM */
 
@@ -4090,6 +4127,7 @@ struct wl_pointer_interface {
 #define WL_POINTER_AXIS_DISCRETE 8
 #define WL_POINTER_AXIS_VALUE120 9
 #define WL_POINTER_AXIS_RELATIVE_DIRECTION 10
+#define WL_POINTER_WARP 11
 
 /**
  * @ingroup iface_wl_pointer
@@ -4135,6 +4173,10 @@ struct wl_pointer_interface {
  * @ingroup iface_wl_pointer
  */
 #define WL_POINTER_AXIS_RELATIVE_DIRECTION_SINCE_VERSION 9
+/**
+ * @ingroup iface_wl_pointer
+ */
+#define WL_POINTER_WARP_SINCE_VERSION 11
 
 /**
  * @ingroup iface_wl_pointer
@@ -4289,6 +4331,19 @@ static inline void
 wl_pointer_send_axis_relative_direction(struct wl_resource *resource_, uint32_t axis, uint32_t direction)
 {
 	wl_resource_post_event(resource_, WL_POINTER_AXIS_RELATIVE_DIRECTION, axis, direction);
+}
+
+/**
+ * @ingroup iface_wl_pointer
+ * Sends an warp event to the client owning the resource.
+ * @param resource_ The client's resource
+ * @param surface_x surface-local x coordinate
+ * @param surface_y surface-local y coordinate
+ */
+static inline void
+wl_pointer_send_warp(struct wl_resource *resource_, wl_fixed_t surface_x, wl_fixed_t surface_y)
+{
+	wl_resource_post_event(resource_, WL_POINTER_WARP, surface_x, surface_y);
 }
 
 #ifndef WL_KEYBOARD_KEYMAP_FORMAT_ENUM
@@ -5139,6 +5194,22 @@ struct wl_subsurface_interface {
  */
 #define WL_SUBSURFACE_SET_DESYNC_SINCE_VERSION 1
 
+#ifndef WL_FIXES_ERROR_ENUM
+#define WL_FIXES_ERROR_ENUM
+/**
+ * @ingroup iface_wl_fixes
+ * wl_fixes error values
+ *
+ * These errors can be emitted in response to wl_fixes requests.
+ */
+enum wl_fixes_error {
+	/**
+	 * unknown global or the global is not removed
+	 */
+	WL_FIXES_ERROR_INVALID_ACK_REMOVE = 0,
+};
+#endif /* WL_FIXES_ERROR_ENUM */
+
 /**
  * @ingroup iface_wl_fixes
  * @struct wl_fixes_interface
@@ -5168,6 +5239,41 @@ struct wl_fixes_interface {
 	void (*destroy_registry)(struct wl_client *client,
 				 struct wl_resource *resource,
 				 struct wl_resource *registry);
+	/**
+	 * acknowledge global removal
+	 *
+	 * Acknowledge the removal of the specified global.
+	 *
+	 * If no global with the specified name exists or the global is not
+	 * removed, the wl_fixes.invalid_ack_remove protocol error will be
+	 * posted.
+	 *
+	 * Due to the Wayland protocol being asynchronous, the wl_global
+	 * objects cannot be destroyed immediately. For example, if a
+	 * wl_global is removed and a client attempts to bind that global
+	 * around same time, it can result in a protocol error due to an
+	 * unknown global name in the bind request.
+	 *
+	 * In order to avoid crashing clients, the compositor should remove
+	 * the wl_global once it is guaranteed that no more bind requests
+	 * will come.
+	 *
+	 * The wl_fixes.ack_global_remove() request is used to signal to
+	 * the compositor that the client will not bind the given global
+	 * anymore. After all clients acknowledge the removal of the
+	 * global, the compositor can safely destroy it.
+	 *
+	 * The client must call the wl_fixes.ack_global_remove() request in
+	 * response to a wl_registry.global_remove() event even if it did
+	 * not bind the corresponding global.
+	 * @param registry the registry object
+	 * @param name unique name of the global
+	 * @since 2
+	 */
+	void (*ack_global_remove)(struct wl_client *client,
+				  struct wl_resource *resource,
+				  struct wl_resource *registry,
+				  uint32_t name);
 };
 
 
@@ -5179,6 +5285,10 @@ struct wl_fixes_interface {
  * @ingroup iface_wl_fixes
  */
 #define WL_FIXES_DESTROY_REGISTRY_SINCE_VERSION 1
+/**
+ * @ingroup iface_wl_fixes
+ */
+#define WL_FIXES_ACK_GLOBAL_REMOVE_SINCE_VERSION 2
 
 #ifdef  __cplusplus
 }

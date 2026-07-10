@@ -1009,10 +1009,15 @@ struct wl_display_listener {
 	 * acknowledge object ID deletion
 	 *
 	 * This event is used internally by the object ID management
-	 * logic. When a client deletes an object that it had created, the
-	 * server will send this event to acknowledge that it has seen the
-	 * delete request. When the client receives this event, it will
-	 * know that it can safely reuse the object ID.
+	 * logic.
+	 *
+	 * When the server stops using an object created by the client, the
+	 * server sends this event. In particular, after sending this
+	 * event, the server will no longer send any events that contain
+	 * the object as the receiver or as an argument.
+	 *
+	 * When the client receives this event, it knows that it can reuse
+	 * the object ID.
 	 * @param id deleted object ID
 	 */
 	void (*delete_id)(void *data,
@@ -1384,6 +1389,26 @@ wl_compositor_release(struct wl_compositor *wl_compositor)
 			 WL_COMPOSITOR_RELEASE, NULL, wl_proxy_get_version((struct wl_proxy *) wl_compositor), WL_MARSHAL_FLAG_DESTROY);
 }
 
+#ifndef WL_SHM_POOL_ERROR_ENUM
+#define WL_SHM_POOL_ERROR_ENUM
+/**
+ * @ingroup iface_wl_shm_pool
+ * wl_shm_pool error values
+ *
+ * These errors can be emitted in response to wl_shm_pool requests.
+ */
+enum wl_shm_pool_error {
+	/**
+	 * buffer format is not known
+	 */
+	WL_SHM_POOL_ERROR_INVALID_FORMAT = 0,
+	/**
+	 * invalid size or stride during buffer creation
+	 */
+	WL_SHM_POOL_ERROR_INVALID_STRIDE = 1,
+};
+#endif /* WL_SHM_POOL_ERROR_ENUM */
+
 #define WL_SHM_POOL_CREATE_BUFFER 0
 #define WL_SHM_POOL_DESTROY 1
 #define WL_SHM_POOL_RESIZE 2
@@ -1499,7 +1524,7 @@ enum wl_shm_error {
 	 */
 	WL_SHM_ERROR_INVALID_FORMAT = 0,
 	/**
-	 * invalid size or stride during pool or buffer creation
+	 * invalid size or stride during pool creation
 	 */
 	WL_SHM_ERROR_INVALID_STRIDE = 1,
 	/**
@@ -1575,7 +1600,7 @@ enum wl_shm_format {
 	 */
 	WL_SHM_FORMAT_ABGR4444 = 0x32314241,
 	/**
-	 * 16-bit RBGA format, [15:0] R:G:B:A 4:4:4:4 little endian
+	 * 16-bit RGBA format, [15:0] R:G:B:A 4:4:4:4 little endian
 	 */
 	WL_SHM_FORMAT_RGBA4444 = 0x32314152,
 	/**
@@ -2011,15 +2036,15 @@ enum wl_shm_format {
 	 */
 	WL_SHM_FORMAT_R32F = 0x46202052,
 	/**
-	 * [63:0] R:G 32:32 little endian
+	 * [63:0] G:R 32:32 little endian
 	 */
 	WL_SHM_FORMAT_GR3232F = 0x46205247,
 	/**
-	 * [95:0] R:G:B 32:32:32 little endian
+	 * [95:0] B:G:R 32:32:32 little endian
 	 */
 	WL_SHM_FORMAT_BGR323232F = 0x46524742,
 	/**
-	 * [127:0] R:G:B:A 32:32:32:32 little endian
+	 * [127:0] A:B:G:R 32:32:32:32 little endian
 	 */
 	WL_SHM_FORMAT_ABGR32323232F = 0x46384241,
 	/**
@@ -2066,6 +2091,23 @@ enum wl_shm_format {
 	 * non-subsampled Cb (1) and Cr (2) planes 16 bits per channel
 	 */
 	WL_SHM_FORMAT_S416 = 0x36313453,
+	/**
+	 * [31:0] x:Cr:Cb:Y 2:10:10:10 little endian
+	 */
+	WL_SHM_FORMAT_XVUY2101010 = 0x30335958,
+	/**
+	 * 2x1 subsampled Cr:Cb plane 10 bits per channel packed
+	 */
+	WL_SHM_FORMAT_P230 = 0x30333250,
+	WL_SHM_FORMAT_T430 = 0x30333454,
+	/**
+	 * 8-bit Y-only
+	 */
+	WL_SHM_FORMAT_Y8 = 0x59455247,
+	/**
+	 * [31:0] x:Y2:Y1:Y0 2:10:10:10 little endian
+	 */
+	WL_SHM_FORMAT_XYYY2101010 = 0x34415059,
 };
 #endif /* WL_SHM_FORMAT_ENUM */
 
@@ -2642,9 +2684,9 @@ struct wl_data_source_listener {
 	 * emitted afterwards if the drop destination does not accept any
 	 * mime type.
 	 *
-	 * However, this event might however not be received if the
-	 * compositor cancelled the drag-and-drop operation before this
-	 * event could happen.
+	 * However, this event might not be received if the compositor
+	 * cancelled the drag-and-drop operation before this event could
+	 * happen.
 	 *
 	 * Note that the data_source may still be used in the future and
 	 * should not be destroyed here.
@@ -2691,7 +2733,7 @@ struct wl_data_source_listener {
 	 * chosen action may change alongside negotiation (e.g. an "ask"
 	 * action can turn into a "move" operation), so the effects of the
 	 * final action must always be applied in
-	 * wl_data_offer.dnd_finished.
+	 * wl_data_source.dnd_finished.
 	 *
 	 * Clients can trigger cursor surface changes from this point, so
 	 * they reflect the current action.
@@ -4567,9 +4609,9 @@ struct wl_seat_listener {
 	 * global.
 	 *
 	 * The name event is sent after binding to the seat global, and
-	 * should be sent before announcing capabilities. This event only
-	 * sent once per seat object, and the name does not change over the
-	 * lifetime of the wl_seat global.
+	 * should be sent before announcing capabilities. This event is
+	 * only sent once per seat object, and the name does not change
+	 * over the lifetime of the wl_seat global.
 	 *
 	 * Compositors may re-use the same seat name if the wl_seat global
 	 * is destroyed and re-created later.
@@ -4912,8 +4954,8 @@ struct wl_pointer_listener {
 	 *
 	 * Mouse button click and release notifications.
 	 *
-	 * The location of the click is given by the last motion or enter
-	 * event. The time argument is a timestamp with millisecond
+	 * The location of the click is given by the last motion, warp or
+	 * enter event. The time argument is a timestamp with millisecond
 	 * granularity, with an undefined base.
 	 *
 	 * The button is a button code as defined in the Linux kernel's
@@ -5182,6 +5224,30 @@ struct wl_pointer_listener {
 					struct wl_pointer *wl_pointer,
 					uint32_t axis,
 					uint32_t direction);
+	/**
+	 * pointer warp event
+	 *
+	 * Notification of pointer location change within a surface.
+	 *
+	 * This location change is not due to events on the input device,
+	 * but because either the surface under the pointer was moved and
+	 * thus the relative position of the pointer changed, or because
+	 * the compositor changed the pointer position in response to an
+	 * event like pointer confinement being exited.
+	 *
+	 * The arguments surface_x and surface_y are the location relative
+	 * to the focused surface.
+	 *
+	 * This event must not occur in the same wl_pointer.frame as a
+	 * wl_pointer.enter or wl_pointer.motion event.
+	 * @param surface_x surface-local x coordinate
+	 * @param surface_y surface-local y coordinate
+	 * @since 11
+	 */
+	void (*warp)(void *data,
+		     struct wl_pointer *wl_pointer,
+		     wl_fixed_t surface_x,
+		     wl_fixed_t surface_y);
 };
 
 /**
@@ -5242,6 +5308,10 @@ wl_pointer_add_listener(struct wl_pointer *wl_pointer,
  * @ingroup iface_wl_pointer
  */
 #define WL_POINTER_AXIS_RELATIVE_DIRECTION_SINCE_VERSION 9
+/**
+ * @ingroup iface_wl_pointer
+ */
+#define WL_POINTER_WARP_SINCE_VERSION 11
 
 /**
  * @ingroup iface_wl_pointer
@@ -5748,7 +5818,7 @@ struct wl_touch_listener {
 	 * describes the shorter diameter. Major and minor are orthogonal
 	 * and both are specified in surface-local coordinates. The center
 	 * of the ellipse is always at the touchpoint location as reported
-	 * by wl_touch.down or wl_touch.move.
+	 * by wl_touch.down or wl_touch.motion.
 	 *
 	 * This event is only sent by the compositor if the touch device
 	 * supports shape reports. The client has to make reasonable
@@ -6611,8 +6681,25 @@ wl_subsurface_set_desync(struct wl_subsurface *wl_subsurface)
 			 WL_SUBSURFACE_SET_DESYNC, NULL, wl_proxy_get_version((struct wl_proxy *) wl_subsurface), 0);
 }
 
+#ifndef WL_FIXES_ERROR_ENUM
+#define WL_FIXES_ERROR_ENUM
+/**
+ * @ingroup iface_wl_fixes
+ * wl_fixes error values
+ *
+ * These errors can be emitted in response to wl_fixes requests.
+ */
+enum wl_fixes_error {
+	/**
+	 * unknown global or the global is not removed
+	 */
+	WL_FIXES_ERROR_INVALID_ACK_REMOVE = 0,
+};
+#endif /* WL_FIXES_ERROR_ENUM */
+
 #define WL_FIXES_DESTROY 0
 #define WL_FIXES_DESTROY_REGISTRY 1
+#define WL_FIXES_ACK_GLOBAL_REMOVE 2
 
 
 /**
@@ -6623,6 +6710,10 @@ wl_subsurface_set_desync(struct wl_subsurface *wl_subsurface)
  * @ingroup iface_wl_fixes
  */
 #define WL_FIXES_DESTROY_REGISTRY_SINCE_VERSION 1
+/**
+ * @ingroup iface_wl_fixes
+ */
+#define WL_FIXES_ACK_GLOBAL_REMOVE_SINCE_VERSION 2
 
 /** @ingroup iface_wl_fixes */
 static inline void
@@ -6672,6 +6763,39 @@ wl_fixes_destroy_registry(struct wl_fixes *wl_fixes, struct wl_registry *registr
 {
 	wl_proxy_marshal_flags((struct wl_proxy *) wl_fixes,
 			 WL_FIXES_DESTROY_REGISTRY, NULL, wl_proxy_get_version((struct wl_proxy *) wl_fixes), 0, registry);
+}
+
+/**
+ * @ingroup iface_wl_fixes
+ *
+ * Acknowledge the removal of the specified global.
+ *
+ * If no global with the specified name exists or the global is not removed,
+ * the wl_fixes.invalid_ack_remove protocol error will be posted.
+ *
+ * Due to the Wayland protocol being asynchronous, the wl_global objects
+ * cannot be destroyed immediately. For example, if a wl_global is removed
+ * and a client attempts to bind that global around same time, it can
+ * result in a protocol error due to an unknown global name in the bind
+ * request.
+ *
+ * In order to avoid crashing clients, the compositor should remove the
+ * wl_global once it is guaranteed that no more bind requests will come.
+ *
+ * The wl_fixes.ack_global_remove() request is used to signal to the
+ * compositor that the client will not bind the given global anymore. After
+ * all clients acknowledge the removal of the global, the compositor can
+ * safely destroy it.
+ *
+ * The client must call the wl_fixes.ack_global_remove() request in
+ * response to a wl_registry.global_remove() event even if it did not bind
+ * the corresponding global.
+ */
+static inline void
+wl_fixes_ack_global_remove(struct wl_fixes *wl_fixes, struct wl_registry *registry, uint32_t name)
+{
+	wl_proxy_marshal_flags((struct wl_proxy *) wl_fixes,
+			 WL_FIXES_ACK_GLOBAL_REMOVE, NULL, wl_proxy_get_version((struct wl_proxy *) wl_fixes), 0, registry, name);
 }
 
 #ifdef  __cplusplus
