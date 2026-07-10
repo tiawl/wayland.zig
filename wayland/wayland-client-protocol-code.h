@@ -156,6 +156,8 @@ static const struct wl_interface *wayland_types[] = {
 	&wl_surface_interface,
 	&wl_surface_interface,
 	&wl_registry_interface,
+	&wl_registry_interface,
+	NULL,
 };
 
 static const struct wl_message wl_display_requests[] = {
@@ -218,7 +220,7 @@ static const struct wl_message wl_shm_pool_requests[] = {
 };
 
 WL_PRIVATE const struct wl_interface wl_shm_pool_interface = {
-	"wl_shm_pool", 2,
+	"wl_shm_pool", 3,
 	3, wl_shm_pool_requests,
 	0, NULL,
 };
@@ -233,7 +235,7 @@ static const struct wl_message wl_shm_events[] = {
 };
 
 WL_PRIVATE const struct wl_interface wl_shm_interface = {
-	"wl_shm", 2,
+	"wl_shm", 3,
 	2, wl_shm_requests,
 	1, wl_shm_events,
 };
@@ -402,7 +404,7 @@ static const struct wl_message wl_seat_events[] = {
 };
 
 WL_PRIVATE const struct wl_interface wl_seat_interface = {
-	"wl_seat", 10,
+	"wl_seat", 11,
 	4, wl_seat_requests,
 	2, wl_seat_events,
 };
@@ -424,12 +426,13 @@ static const struct wl_message wl_pointer_events[] = {
 	{ "axis_discrete", "5ui", wayland_types + 0 },
 	{ "axis_value120", "8ui", wayland_types + 0 },
 	{ "axis_relative_direction", "9uu", wayland_types + 0 },
+	{ "warp", "11ff", wayland_types + 0 },
 };
 
 WL_PRIVATE const struct wl_interface wl_pointer_interface = {
-	"wl_pointer", 10,
+	"wl_pointer", 11,
 	2, wl_pointer_requests,
-	11, wl_pointer_events,
+	12, wl_pointer_events,
 };
 
 static const struct wl_message wl_keyboard_requests[] = {
@@ -446,7 +449,7 @@ static const struct wl_message wl_keyboard_events[] = {
 };
 
 WL_PRIVATE const struct wl_interface wl_keyboard_interface = {
-	"wl_keyboard", 10,
+	"wl_keyboard", 11,
 	1, wl_keyboard_requests,
 	6, wl_keyboard_events,
 };
@@ -466,7 +469,7 @@ static const struct wl_message wl_touch_events[] = {
 };
 
 WL_PRIVATE const struct wl_interface wl_touch_interface = {
-	"wl_touch", 10,
+	"wl_touch", 11,
 	1, wl_touch_requests,
 	7, wl_touch_events,
 };
@@ -531,11 +534,12 @@ WL_PRIVATE const struct wl_interface wl_subsurface_interface = {
 static const struct wl_message wl_fixes_requests[] = {
 	{ "destroy", "", wayland_types + 0 },
 	{ "destroy_registry", "o", wayland_types + 96 },
+	{ "ack_global_remove", "2ou", wayland_types + 97 },
 };
 
 WL_PRIVATE const struct wl_interface wl_fixes_interface = {
-	"wl_fixes", 1,
-	2, wl_fixes_requests,
+	"wl_fixes", 2,
+	3, wl_fixes_requests,
 	0, NULL,
 };
 
