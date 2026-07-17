@@ -3,8 +3,8 @@
     .version = "1.0.0",
     .dependencies = .{
         .wayland = .{
-            .url = "git+https://gitlab.freedesktop.org/wayland/wayland?ref=1.25.91#c23a8beb1ff41428e841137175c6be738ab627be",
-            .hash = "N-V-__8AAA86JQCeaFoZ7n3QuazP5Aa0N6SWNEmtGpuowNcB",
+            .url = "git+https://gitlab.freedesktop.org/wayland/wayland?ref=1.26.0#87cc8a8728a923fc57938faa81ba0e74f34ecdc7",
+            .hash = "N-V-__8AAA46JQABKU7sa-6xGUAN44uFsYSUS_w79UVuu7qo",
         },
         .@"wayland-protocols" = .{
             .url = "git+https://gitlab.freedesktop.org/wayland/wayland-protocols?ref=1.49#ee78491a237eaff9389a0ccf8680521d074407d3",
