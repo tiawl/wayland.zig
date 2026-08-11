@@ -66,7 +66,7 @@ jobs:
 
       - name: Test updating
         shell: 'bash'
-        run: zig build -Dupdate -Dverbose
+        run: zig build -Dupdate -Dverbose -freference-trace
 
   user:
     strategy:
@@ -103,4 +103,4 @@ jobs:
 
       - name: Test building ${{ matrix.repo }}.zig
         shell: 'bash'
-        run: zig build -Dverbose
+        run: zig build -Dverbose -freference-trace
