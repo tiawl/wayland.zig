@@ -4,7 +4,7 @@ const toolbox = @import("toolbox");
 const VerboseBuilder = toolbox.VerboseBuilder;
 
 fn updateWayland(pkg_builder: *VerboseBuilder) !void {
-    const wayland_dep = pkg_builder.verboseDependency("wayland");
+    const wayland_dep = pkg_builder.verboseDependency("wayland", pkg_builder.getOptimize(), pkg_builder.getTarget());
     var wayland_builder = VerboseBuilder.initFromDependency(wayland_dep);
 
     while (try wayland_builder.iterate(&.{"src"})) |entry| {
@@ -32,7 +32,7 @@ fn updateWayland(pkg_builder: *VerboseBuilder) !void {
 }
 
 fn updateWaylandProtocols(pkg_builder: *VerboseBuilder) !void {
-    const wayland_protocols_dep = pkg_builder.dependency("wayland-protocols");
+    const wayland_protocols_dep = pkg_builder.dependency("wayland-protocols", pkg_builder.getOptimize(), pkg_builder.getTarget());
     var wayland_protocols_builder = VerboseBuilder.initFromDependency(wayland_protocols_dep);
 
     for ([_]struct {
@@ -66,7 +66,7 @@ fn updateFn(pkg_builder: *VerboseBuilder) !void {
 }
 
 fn buildFn(pkg_builder: *VerboseBuilder) !void {
-    const lib = pkg_builder.addLibrary("wayland");
+    const lib = pkg_builder.addLibrary("wayland", pkg_builder.getOptimize(), pkg_builder.getTarget());
 
     while (try pkg_builder.walk(&.{"wayland"})) |*entry| {
         if (toolbox.isCHeader(entry.basename)) pkg_builder.installHeader(lib, &.{ "wayland", entry.path }, &.{entry.path});
