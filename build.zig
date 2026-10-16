@@ -10,11 +10,21 @@ fn updateWayland(pkg_builder: *VerboseBuilder) !void {
     while (try wayland_builder.iterate(&.{"src"})) |entry| {
         switch (entry.kind) {
             .file => {
-                if ((std.mem.startsWith(u8, entry.name, "wayland-client") or
+                if (((std.mem.startsWith(u8, entry.name, "wayland-client") or
                     std.mem.startsWith(u8, entry.name, "wayland-server") or
                     std.mem.startsWith(u8, entry.name, "wayland-util")) and
                     !std.mem.endsWith(u8, entry.name, "private.h") and
-                    toolbox.isCHeader(entry.name) or toolbox.isCTemplate(entry.name))
+                    toolbox.isCHeader(entry.name) or toolbox.isCTemplate(entry.name)) or
+                    // C files required for wayland-scanner and libwayland-client
+                    ((std.mem.startsWith(u8, entry.name, "connection") or
+                    std.mem.startsWith(u8, entry.name, "scanner") or
+                    std.mem.startsWith(u8, entry.name, "wayland-client") or
+                    std.mem.startsWith(u8, entry.name, "wayland-os") or
+                    std.mem.startsWith(u8, entry.name, "wayland-util")) and
+                    toolbox.isCSource(entry.name)) or
+                    // Single private header is required for wayland-util dependency
+                    (std.mem.startsWith(u8, entry.name, "wayland-private.h") and
+                    toolbox.isCHeader(entry.name)))
                 {
                     try pkg_builder.copy(&.{ "wayland", entry.name }, &wayland_builder, &.{ "src", entry.name });
                 }
@@ -67,22 +77,41 @@ fn updateFn(pkg_builder: *VerboseBuilder) !void {
 
 fn buildFn(pkg_builder: *VerboseBuilder) !void {
     const lib = pkg_builder.addLibrary("wayland", pkg_builder.getOptimize(), pkg_builder.getTarget());
+    const wayland_scanner = pkg_builder.addExecutable("wayland-scanner", pkg_builder.getOptimize(), pkg_builder.getTarget());
+    const wayland_private = pkg_builder.addLibrary("wayland-private", pkg_builder.getOptimize(), pkg_builder.getTarget());
+    const wayland_util = pkg_builder.addLibrary("wayland-util", pkg_builder.getOptimize(), pkg_builder.getTarget());
+    const wayland_client = pkg_builder.addLibrary("wayland-client", pkg_builder.getOptimize(), pkg_builder.getTarget());
 
     while (try pkg_builder.walk(&.{"wayland"})) |*entry| {
         if (toolbox.isCHeader(entry.basename)) pkg_builder.installHeader(lib, &.{ "wayland", entry.path }, &.{entry.path});
+        if (std.mem.startsWith(u8, entry.basename, "scanner")) pkg_builder.addCSource(wayland_scanner, &.{ "wayland", entry.path }, &.{});
+        if (std.mem.startsWith(u8, entry.basename, "connection") or std.mem.startsWith(u8, entry.basename, "wayland-os")) pkg_builder.addCSource(wayland_private, &.{ "wayland", entry.path }, &.{});
+        if (std.mem.startsWith(u8, entry.basename, "wayland-util")) {
+            if (toolbox.isCSource(entry.basename)) pkg_builder.addCSource(wayland_util, &.{ "wayland", entry.path }, &.{});
+            if (toolbox.isCHeader(entry.basename)) pkg_builder.installHeader(wayland_util, &.{ "wayland", entry.path }, &.{entry.path});
+        }
     }
     const uri = try std.Uri.parse(build_zig_zon.dependencies.wayland.url);
     const wayland_version = pkg_builder.uriComponent(&uri.query.?)[4..];
     const wayland_version_sem = std.SemanticVersion.parse(wayland_version) catch unreachable;
 
-    pkg_builder.generateConfigHeader(lib, &.{"wayland"}, &.{"wayland-version.h.in"}, .autoconf_at, .{
-        .WAYLAND_VERSION = wayland_version,
-        .WAYLAND_VERSION_MAJOR = @as(i64, @intCast(wayland_version_sem.major)),
-        .WAYLAND_VERSION_MINOR = @as(i64, @intCast(wayland_version_sem.minor)),
-        .WAYLAND_VERSION_MICRO = @as(i64, @intCast(wayland_version_sem.patch)),
-    });
+    for ([_]*std.Build.Step.Compile{ lib, wayland_scanner, wayland_private, wayland_util, wayland_client }) |artifact| {
+        pkg_builder.generateConfigHeader(artifact, &.{"wayland"}, &.{"wayland-version.h.in"}, .autoconf_at, .{
+            .WAYLAND_VERSION = wayland_version,
+            .WAYLAND_VERSION_MAJOR = @as(i64, @intCast(wayland_version_sem.major)),
+            .WAYLAND_VERSION_MINOR = @as(i64, @intCast(wayland_version_sem.minor)),
+            .WAYLAND_VERSION_MICRO = @as(i64, @intCast(wayland_version_sem.patch)),
+        });
+    }
 
     pkg_builder.installArtifact(lib);
+    pkg_builder.linkLibrary(wayland_private, wayland_client);
+    pkg_builder.linkLibrary(wayland_util, wayland_client);
+    pkg_builder.installArtifact(wayland_client);
+
+    // TODO:
+    //  Implement Wayland Private Config Generation; required for libwayland-client
+    //  Implement libxml and libexpat + dependencies for Wayland Scanner
 }
 
 pub fn build(builder: *std.Build) !void {
