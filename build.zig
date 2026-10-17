@@ -83,19 +83,26 @@ fn buildFn(pkg_builder: *VerboseBuilder) !void {
     const wayland_client = pkg_builder.addLibrary("wayland-client", pkg_builder.getOptimize(), pkg_builder.getTarget());
 
     while (try pkg_builder.walk(&.{"wayland"})) |*entry| {
-        if (toolbox.isCHeader(entry.basename)) pkg_builder.installHeader(lib, &.{ "wayland", entry.path }, &.{entry.path});
+        if (toolbox.isCHeader(entry.basename)) {
+            pkg_builder.installHeader(lib, &.{ "wayland", entry.path }, &.{entry.path});
+            pkg_builder.installHeader(wayland_private, &.{ "wayland", entry.path }, &.{entry.path});
+        }
         if (std.mem.startsWith(u8, entry.basename, "scanner")) pkg_builder.addCSource(wayland_scanner, &.{ "wayland", entry.path }, &.{});
         if (std.mem.startsWith(u8, entry.basename, "connection") or std.mem.startsWith(u8, entry.basename, "wayland-os")) pkg_builder.addCSource(wayland_private, &.{ "wayland", entry.path }, &.{});
         if (std.mem.startsWith(u8, entry.basename, "wayland-util")) {
             if (toolbox.isCSource(entry.basename)) pkg_builder.addCSource(wayland_util, &.{ "wayland", entry.path }, &.{});
             if (toolbox.isCHeader(entry.basename)) pkg_builder.installHeader(wayland_util, &.{ "wayland", entry.path }, &.{entry.path});
         }
+        if (std.mem.startsWith(u8, entry.basename, "wayland-client")) {
+            if (toolbox.isCSource(entry.basename)) pkg_builder.addCSource(wayland_client, &.{ "wayland", entry.path }, &.{});
+            if (toolbox.isCHeader(entry.basename)) pkg_builder.installHeader(wayland_client, &.{ "wayland", entry.path }, &.{entry.path});
+        }
     }
     const uri = try std.Uri.parse(build_zig_zon.dependencies.wayland.url);
     const wayland_version = pkg_builder.uriComponent(&uri.query.?)[4..];
     const wayland_version_sem = std.SemanticVersion.parse(wayland_version) catch unreachable;
 
-    for ([_]*std.Build.Step.Compile{ lib, wayland_scanner, wayland_private, wayland_util, wayland_client }) |artifact| {
+    for ([_]*std.Build.Step.Compile{ lib, wayland_scanner, wayland_private, wayland_client, wayland_client }) |artifact| {
         pkg_builder.generateConfigHeader(artifact, &.{"wayland"}, &.{"wayland-version.h.in"}, .autoconf_at, .{
             .WAYLAND_VERSION = wayland_version,
             .WAYLAND_VERSION_MAJOR = @as(i64, @intCast(wayland_version_sem.major)),
@@ -104,13 +111,45 @@ fn buildFn(pkg_builder: *VerboseBuilder) !void {
         });
     }
 
+    // All of this was ported from: https://github.com/allyourcodebase/wayland/blob/master/build.zig
+    pkg_builder.generateConfigHeader(wayland_private, &.{"wayland"}, &.{"config.h.in"}, .autoconf_at, .{
+        .PACKAGE = "wayland",
+        .PACKAGE_VERSION = wayland_version,
+        .HAVE_SYS_PRCTL_H = pkg_builder.getOs() == .linux,
+        .HAVE_PROCCTL_H = pkg_builder.getTarget().result.os.isAtLeast(.freebsd, .{ .major = 10, .minor = 0, .patch = 0}) orelse false,
+        .HAVE_SYS_UCRED_H = pkg_builder.getOs().isBSD(),
+        .HAVE_ACCEPT4 = true,
+        .HAVE_MKOSTEMP = switch (pkg_builder.getOs()) {
+            .linux => pkg_builder.getTarget().result.isMuslLibC() or (pkg_builder.getTarget().result.os.version_range.linux.glibc.order(.{ .major = 2, .minor = 7, .patch = 0 }) != .lt),
+            .freebsd => pkg_builder.getTarget().result.os.isAtLeast(.freebsd, .{ .major = 10, .minor = 0, .patch = 0 }) orelse false,
+            .dragonfly => pkg_builder.getTarget().result.os.isAtLeast(.dragonfly, .{ .major = 4, .minor = 6, .patch = 0 }) orelse false,
+            .openbsd => pkg_builder.getTarget().result.os.isAtLeast(.openbsd, .{ .major = 5, .minor = 7, .patch = 0 }) orelse false,
+            else => false,
+        },
+        .HAVE_POSIX_FALLOCATE = switch (pkg_builder.getOs()) {
+            .netbsd => false,
+            .openbsd => false,
+            else => true,
+        },
+        .HAVE_PRCTL = pkg_builder.getOs() == .linux,
+        .HAVE_MEMFD_CREATE = switch (pkg_builder.getOs()) {
+            .linux => pkg_builder.getTarget().result.isMuslLibC() or (pkg_builder.getTarget().result.isGnuLibC() and pkg_builder.getTarget().result.os.version_range.linux.glibc.order(.{ .major = 2, .minor = 7, .patch = 0 }) != .lt),
+            .freebsd => pkg_builder.getTarget().result.os.isAtLeast(.freebsd, .{ .major = 13, .minor = 0, .patch = 0 }) orelse false,
+            .netbsd => false,
+            else => false,
+        },
+        .HAVE_MREMAP = pkg_builder.getOs() == .linux or pkg_builder.getOs() == .freebsd,
+        .HAVE_STRNDUP = true,
+        .HAVE_BROKEN_MSG_CMSG_CLOEXEC = 0,
+        .HAVE_XUCRED_CR_PID = 0,
+    });
+
     pkg_builder.installArtifact(lib);
     pkg_builder.linkLibrary(wayland_private, wayland_client);
     pkg_builder.linkLibrary(wayland_util, wayland_client);
     pkg_builder.installArtifact(wayland_client);
 
     // TODO:
-    //  Implement Wayland Private Config Generation; required for libwayland-client
     //  Implement libxml and libexpat + dependencies for Wayland Scanner
 }
 
