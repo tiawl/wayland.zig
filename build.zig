@@ -10,7 +10,9 @@ fn updateWayland(pkg_builder: *VerboseBuilder) !void {
     while (try wayland_builder.iterate(&.{"src"})) |entry| {
         switch (entry.kind) {
             .file => {
-                if (((std.mem.startsWith(u8, entry.name, "wayland-client") or
+                if (((std.mem.startsWith(u8, entry.name, "timespec-util.h") or
+                    std.mem.startsWith(u8, entry.name, "wayland-client") or
+                    std.mem.startsWith(u8, entry.name, "wayland-os") or
                     std.mem.startsWith(u8, entry.name, "wayland-server") or
                     std.mem.startsWith(u8, entry.name, "wayland-util")) and
                     !std.mem.endsWith(u8, entry.name, "private.h") and
@@ -88,7 +90,13 @@ fn buildFn(pkg_builder: *VerboseBuilder) !void {
             pkg_builder.installHeader(wayland_private, &.{ "wayland", entry.path }, &.{entry.path});
         }
         if (std.mem.startsWith(u8, entry.basename, "scanner")) pkg_builder.addCSource(wayland_scanner, &.{ "wayland", entry.path }, &.{});
-        if (std.mem.startsWith(u8, entry.basename, "connection") or std.mem.startsWith(u8, entry.basename, "wayland-os")) pkg_builder.addCSource(wayland_private, &.{ "wayland", entry.path }, &.{});
+        if (std.mem.startsWith(u8, entry.basename, "connection") or (std.mem.startsWith(u8, entry.basename, "wayland-os") and toolbox.isCSource(entry.basename))) {
+            pkg_builder.addCSource(wayland_private, &.{ "wayland", entry.path }, &.{});
+        }
+        // This specific header is used only libwayland-client and acts as a glue to libwayland-private
+        if (std.mem.startsWith(u8, entry.basename, "wayland-os") and toolbox.isCHeader(entry.basename)) {
+            pkg_builder.installHeader(wayland_client, &.{ "wayland", entry.path }, &.{entry.path});
+        }
         if (std.mem.startsWith(u8, entry.basename, "wayland-util")) {
             if (toolbox.isCSource(entry.basename)) pkg_builder.addCSource(wayland_util, &.{ "wayland", entry.path }, &.{});
             if (toolbox.isCHeader(entry.basename)) pkg_builder.installHeader(wayland_util, &.{ "wayland", entry.path }, &.{entry.path});
@@ -103,6 +111,7 @@ fn buildFn(pkg_builder: *VerboseBuilder) !void {
     const wayland_version_sem = std.SemanticVersion.parse(wayland_version) catch unreachable;
 
     for ([_]*std.Build.Step.Compile{ lib, wayland_scanner, wayland_private, wayland_client, wayland_client }) |artifact| {
+        pkg_builder.linkLibC(artifact);
         pkg_builder.generateConfigHeader(artifact, &.{"wayland"}, &.{"wayland-version.h.in"}, .autoconf_at, .{
             .WAYLAND_VERSION = wayland_version,
             .WAYLAND_VERSION_MAJOR = @as(i64, @intCast(wayland_version_sem.major)),
