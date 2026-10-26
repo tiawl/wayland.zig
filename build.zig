@@ -10,11 +10,12 @@ fn updateWayland(pkg_builder: *VerboseBuilder) !void {
     while (try wayland_builder.iterate(&.{"src"})) |entry| {
         switch (entry.kind) {
             .file => {
-                if ((std.mem.startsWith(u8, entry.name, "wayland-client") or
+                if (((std.mem.startsWith(u8, entry.name, "wayland-client") or
                     std.mem.startsWith(u8, entry.name, "wayland-server") or
                     std.mem.startsWith(u8, entry.name, "wayland-util")) and
                     !std.mem.endsWith(u8, entry.name, "private.h") and
-                    toolbox.isCHeader(entry.name) or toolbox.isCTemplate(entry.name))
+                    toolbox.isCHeader(entry.name)) or
+                    toolbox.isCTemplate(entry.name))
                 {
                     try pkg_builder.copy(&.{ "wayland", entry.name }, &wayland_builder, &.{ "src", entry.name });
                 }
