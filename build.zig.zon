@@ -7,8 +7,8 @@
             .hash = "N-V-__8AAA46JQABKU7sa-6xGUAN44uFsYSUS_w79UVuu7qo",
         },
         .@"wayland-protocols" = .{
-            .url = "git+https://gitlab.freedesktop.org/wayland/wayland-protocols?ref=1.49#ee78491a237eaff9389a0ccf8680521d074407d3",
-            .hash = "N-V-__8AAOTNEADZkChhsSciYizE4kIbZsozjDZXVeG5R_uY",
+            .url = "git+https://gitlab.freedesktop.org/wayland/wayland-protocols?ref=1.50#3eab2dccf4bfdd85c16d312a6c8c8fbc2a6e73a8",
+            .hash = "N-V-__8AAOM9EQA8SyN285exZO9Ib8FLAhn4cDW7q55sCWMl",
         },
         .toolbox = .{
             .url = "git+https://github.com/tiawl/toolbox?ref=2.3.0#b21fce37bf4964add79107c0372ec9100320888c",
